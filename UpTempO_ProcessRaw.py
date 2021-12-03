@@ -21,7 +21,6 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
             si="%d" % (i+1)
             fvars.append('P'+si)
 
-            
     if 'ddepths' in binf:
         tdeps=binf['tdepths']
         ddep=binf['ddepths']
@@ -106,7 +105,14 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
         rown+=1
         if '/' in cdate: spl='/'
         else: spl='-'
-        cyear,cmonth,cday,chour,cmin,csec,cdoy,q=BT.processDate(cdate,spliton=spl)
+        #cyear,cmonth,cday,chour,cmin,csec,cdoy,q=BT.processDate(cdate,spliton=spl)
+        thedate,thetime=cdate.split(' ')
+        cyear,cmonth,cday=thedate.split(spl)
+        chour,cmin,csec=thetime.split(':')
+
+        fchr=float(chour)+float(cmin)/60.
+        chour="%.4f" % fchr
+
         clat=sd[hinf['Lat']]
         clon=sd[hinf['Lon']]
 
@@ -171,7 +177,7 @@ def processPG(bid):
     data=opr.read()
     opr.close()
     data=data.replace('"','')
-    data=data.split('\n') #[0:-1]
+    data=data.split('\n')[0:-1]
     header=data[0].split(',')
     data=data[1:]
     data=[da for da in data if da]
@@ -181,7 +187,7 @@ def processPG(bid):
     
     processDATA(bid,header,data,hinf)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1     
-                                       #pmod='PG' by default (multiply Ocean Pressure by 0.1)
+                                       #pmod=0.1 by default (value to multiply Ocean Pressure by)
     appendProcessed(bid,order=-1)
     #WebFormat(bid)
     
@@ -203,7 +209,7 @@ def appendProcessed(bid,order=-1,fts=1):
     if os.path.isfile('UPTEMPO/Processed_Data/'+bid+'.dat'):
         oph=open('UPTEMPO/Processed_Data/'+bid+'.dat','r')
         have=oph.read()
-        oph.close()
+        oph.close() 
         have=have.split('\n')
         have=[h for h in have if h]
     else: have=[data[0]]
@@ -216,6 +222,16 @@ def appendProcessed(bid,order=-1,fts=1):
         for d in data:
             if d not in have: have.append(d)
 
+    # remove data measured before deploymentDate (see BM.BuoyMaster)
+    binf = BM.BuoyMaster(bid)
+    deploymentDate = binf['deploymentDate']
+    depmonth, depday, depyear = deploymentDate.split('/')
+    depdate = datetime.datetime(int(depyear), int(depmonth), int(depday))
+    for h in have[1:]:
+        hyear, hmonth, hday = h.split(' ')[:3]
+        if datetime.datetime(int(hyear), int(hmonth), int(hday)) < depdate:
+            have.remove(h)
+
     opw=open('UPTEMPO/Processed_Data/'+bid+'.dat','w')
     for h in have: opw.write(h+'\n')
     opw.close()
@@ -224,36 +240,78 @@ def appendProcessed(bid,order=-1,fts=1):
 #======================================================================   
 def WebFormat(bid,fts=1,order=-1,newdead=0):
 
+    # get info and make proper header
+    wmo=BT.lookupWMO(bid)
+    binf=BM.BuoyMaster(bid)
+    binfn1="%.2d" % int(binf['name'][1])
+
+    # depDate="%.2d/%.2d/%d" % (int(depline[1]),int(depline[2]),int(depline[0]))
+    fdeplat=binf['deploymentLat']
+    fdeplon=binf['deploymentLon']
+    
+    if fdeplat < 0:
+        fdeplat=-fdeplat
+        nors='S'
+    else: nors='N'
+    
+    if fdeplon < 0:
+        fdeplon=-fdeplon
+        eorw='W'
+    else: eorw='E'
+    deplat="%.2f" % fdeplat
+    deplon="%.2f" % fdeplon
+    depll=deplat+nors+' '+deplon+eorw
+
     opf=open('UPTEMPO/LastUpdate/'+bid+'.dat','r')
     data=opf.read()
     opf.close()
     data=data.replace(';',' ')
     data=data.split('\n')
     data=[da for da in data if da]
+    print()
     header=data[0]
+    print(bid,header)
     data=data[1:]
     nd=len(data)
 
-    if order == -1:
-        rdata=[]
-        for r in range(nd):
-            rdata.append(data[nd-1-r])
-        data=rdata
-
     shead=header.split(' ')
 
-    binf=BM.BuoyMaster(bid)
-    binfn1="%.2d" % int(binf['name'][1])
+    # binf=BM.BuoyMaster(bid)
+    # binfn1="%.2d" % int(binf['name'][1])
 
     fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel']+'-Last.dat'
 
     today=datetime.datetime.now()
     lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
-
-
-    lastline=data[-1].split(' ')
-    dolt="%.2d/%.2d/%d" % (int(lastline[1]),int(lastline[2]),int(lastline[0]))
     
+    if nd>0:
+        if order == -1:
+            rdata=[]
+            for r in range(nd):
+                rdata.append(data[nd-1-r])
+            data=rdata
+    
+            lastline=data[-1].split(' ')
+            dolt="%.2d/%.2d/%d" % (int(lastline[1]),int(lastline[2]),int(lastline[0]))
+    else:
+        dolt=lastUpdate
+    
+    webhead=['%UpTempO '+binf['name'][0]+' #'+binfn1,
+          '%Iridium ID: '+bid,
+          '%WMO: '+wmo,
+          '%DATE DEPLOYED: '+ binf['deploymentDate'],
+          '%POSITION DEPLOYED: '+depll,
+          '%DATE OF LAST TRANSMISSION: '+dolt,
+          '%DATE OF LAST DATA FILE UPDATE: '+lastUpdate,
+          '%',
+          '%DATA COLUMNS:',
+          '% 0 = year',
+          '% 1 = month',
+          '% 2 = day',
+          '% 3 = hour (GMT)',
+          '% 4 = Latitude (N)',
+          '% 5 = Longitude (E)']
+
     
     if os.path.isfile('UPTEMPO/WebData/'+fname):
         opweb=open('UPTEMPO/WebData/'+fname,'r')
@@ -261,11 +319,18 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         opweb.close()
         have=have.split('\n')
         have=[ha for ha in have if ha]
-        header=[ha for ha in have if '%' in ha]
+        header=[ha for ha in webhead]
+        # header=[ha for ha in have if '%' in ha]
+        # # if bid == '300534062158480':
+        # print('line 278')
+        # print(header)
+        # print()
+        # print()
+        # exit(-1)
         hdata=[ha for ha in have if '%' not in ha]
 
-        header[5]='%DATE OF LAST TRANSMISSION: '+dolt
-        header[6]='%DATE OF LAST DATA FILE UPDATE: '+lastUpdate
+        # header[5]='%DATE OF LAST TRANSMISSION: '+dolt
+        # header[6]='%DATE OF LAST DATA FILE UPDATE: '+lastUpdate
 
         for d in data:
             if d not in hdata: hdata.append(d)
@@ -275,40 +340,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         for hd in hdata: opw.write(hd+'\n')
         opw.close()
     else:
-        depline=data[0].split(' ')
-        wmo=BT.lookupWMO(bid)
-        depDate="%.2d/%.2d/%d" % (int(depline[1]),int(depline[2]),int(depline[0]))
-        fdeplat=float(depline[4])
-        fdeplon=float(depline[5])
-        
-        if fdeplat < 0:
-            fdeplat=-fdeplat
-            nors='S'
-        else: nors='N'
-        
-        if fdeplon < 0:
-            fdeplon=-fdeplon
-            eorw='W'
-        else: eorw='E'
-        deplat="%.2f" % fdeplat
-        deplon="%.2f" % fdeplon
-        depll=deplat+nors+' '+deplon+eorw
-        
-        webhead=['%UpTempO '+binf['name'][0]+' #'+binfn1,
-             '%Iridium ID: '+bid,
-             '%WMO: '+wmo,
-             '%DATE DEPLOYED: '+depDate,
-             '%POSITION DEPLOYED: '+depll,
-             '%DATE OF LAST TRANSMISSION: '+dolt,
-             '%DATE OF LAST DATA FILE UPDATE: '+lastUpdate,
-             '%',
-             '%DATA COLUMNS:',
-             '% 0 = year',
-             '% 1 = month',
-             '% 2 = day',
-             '% 3 = hour (GMT)',
-             '% 4 = Latitude (N)',
-             '% 5 = Longitude (E)']
+        # depline=data[0].split(' ')
 
         tdepths=binf['tdepths']
         eddepths=binf['tdepths'].copy()
@@ -317,11 +349,11 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         if 'ddepths' in binf: ddepths=binf['ddepths']
         if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']
         if 'sdepths' in binf: sdepths=binf['sdepths']
-##        print(sdepths)
+       # print(sdepths)
         
         
 
-##        print(tdepths)
+      #  print(tdepths)
         shead=header.split(' ')[6:]
         col=6
 

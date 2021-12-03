@@ -18,7 +18,8 @@ def TimeSeriesPlots(bid,quan='Temp'):
     print('plotting Time Series for '+bid)
     #quan = 'Temp' or 'Pressure'
     
-    cols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    # cols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    cols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     
     binf=BM.BuoyMaster(bid)
     buoylab='UpTempO '+binf['name'][0]+' #'+binf['name'][1]
@@ -41,16 +42,13 @@ def TimeSeriesPlots(bid,quan='Temp'):
     days=[int(d) for d in data[:,2]]
     hours=[int(h) for h in data[:,3]]
     n=len(days)
+
     dateobjs=[datetime.datetime(years[i],months[i],days[i],hours[i]) for i in range(n)]
-
-
-    #return temps
 
     rule=rrulewrapper(MONTHLY,interval=1)
     loc=RRuleLocator(rule)
     formatter=DateFormatter('%m/%d/%y')
     
-
     plt.rcParams['figure.figsize']=(20,8)
     plt.rcParams['font.size']=18
     
@@ -282,6 +280,162 @@ def VelocitySeries(bid):
         for t in tr: opw.write(t+'\n')
         opw.close()
         
+# def Batt_Sub(bid):
+#     print(f'plotting Battery Voltage and Submergence for {bid}')
+#     binf=BM.BuoyMaster(bid)
+#     buoylab='UpTempO '+binf['name'][0]+' #'+binf['name'][1]
+#     abbv=binf['imeiabbv']
+
+#     opf=open('UPTEMPO/Processed_Data/'+bid+'.dat','r')
+#     header=opf.readline()
+#     opf.close()
+#     header=header.split(' ')
+    
+#     data=np.loadtxt('UPTEMPO/Processed_Data/'+bid+'.dat',skiprows=1)
+
+ 
+#     years=[int(y) for y in data[:,0]]
+#     months=[int(m) for m in data[:,1]]
+#     days=[int(d) for d in data[:,2]]
+#     hours=[int(h) for h in data[:,3]]
+#     n=len(days)
+#     dateobjs=[datetime.datetime(years[i],months[i],days[i],hours[i]) for i in range(n)]
+
+
+#     rule=rrulewrapper(MONTHLY,interval=1)
+#     loc=RRuleLocator(rule)
+#     formatter=DateFormatter('%m/%d/%y')
+    
+
+#     plt.rcParams['figure.figsize']=(20,8)
+#     plt.rcParams['font.size']=18
+    
+#     fig,ax=plt.subplots()
+#     ax.xaxis.set_major_locator(loc)
+#     ax.xaxis.set_major_formatter(formatter)
+#     ax.xaxis.set_tick_params(rotation=85,labelsize=14)
+#     ax.set_ylim(0,2)
+    
+#     yaxlab1='Battery Voltage'
+#     yaxlab2='Submergence'
+
+#     #Trying to plot m/s velocity on left axis, and Daily Distance Travelled (km) on the right axis
+#     #left ylim= 0 to 2
+#     #right ylim=-20 to 60
+
+#     #convert date to doy
+#     doys=[]
+#     dyears=[]
+#     batt=[]
+#     subm=[]
+#     uyears=[]
+#     for d in range(len(data)):
+#         cdoy=BT.dateToDOY(year=data[d,0],month=data[d,1],day=data[d,2],hour=data[d,3])
+#         doys.append(float(cdoy))
+#         dyears.append(data[d,0])
+#         batt.append(data[d,-2])
+#         subm.append(data[d,-1])
+#         if data[d,0] not in uyears: uyears.append(data[d,0])
+#     # print(subm,batt)
+#     print(len(subm),len(batt),len(doys),len(dyears))
+#     # exit(-1)
+
+#     if len(uyears) > 1:
+#         addinf={}
+#         for y in range(len(uyears)-1):
+#             if BT.isLeap(uyears[y]): addinf[uyears[y+1]]=366.
+#             else: addinf[uyears[y+1]]=365.
+
+#         addinf[uyears[0]]=0
+
+#         dyears=np.asarray(dyears)
+#         doys=np.asarray(doys)
+#         for uy in uyears:
+#             w=dyears == uy
+#             doys[w]=doys[w]+addinf[uy]
+
+#     print(len(subm),len(batt),len(doys),len(dyears))
+#     # battery=[]
+#     # submerge=[]
+#     # for i in range(len(doys)-1):
+#     #     startdoy=doys[i]
+#     #     enddoy=doys[i+1]
+#     #     startlat=lats[i]
+#     #     endlat=lats[i+1]
+#     #     startlon=lons[i]
+#     #     endlon=lons[i+1]
+
+#     #     deltat=(enddoy-startdoy)*24.*60.*60.  #seconds
+
+#     #     distkm=PF.dist_ll([startlat],[startlon],[endlat],[endlon])
+#     #     distm=distkm*1000.
+#     #     dkmt.append([distm,deltat])
+
+#     #     if deltat != 0:
+#     #         vel=distm/deltat
+#     #     else: vel=0
+#     #     if vel != 0:
+#     #         velocity.append([startdoy,vel])
+
+#     # nvel=np.asarray(velocity)
+#     plt.plot(np.asarray(batt),'-ok',ms=3)
+#     plt.show()
+#     exit(-1)
+#     #-- daily distance --
+#     intdoys=[int(d) for d in doys]
+#     udoys=[]
+#     for i in intdoys:
+#         if i not in udoys: udoys.append(i)
+
+#     intdoys=np.asarray(intdoys)
+#     lats=np.asarray(lats)
+#     lons=np.asarray(lons)
+#     sto=[]
+#     for ud in udoys:
+#         wud=intdoys == ud
+#         if np.sum(wud) > 15:
+#             cll=[ud,lats[wud][0],lats[wud][-1],lons[wud][0],lons[wud][1]]
+#             sto.append(cll)
+
+#     nsto=np.asarray(sto)
+#     startlats=nsto[:,1]
+#     endlats=nsto[:,2]
+#     startlons=nsto[:,3]
+#     endlons=nsto[:,4]
+#     dists=PF.dist_ll(startlats,startlons,endlats,endlons)
+#     doys=nsto[:,0]
+#     #print(doys)
+#     #print(dists)
+    
+#     secax=ax.twinx()
+#     secax.spines['right'].set_color('red')
+#     secax.set_ylim(-20,40)
+#     secax.set_ylabel('Daily Distance (km)',color='r')
+#     secax.xaxis.set_major_formatter(formatter)
+#     secax.plot(doys,dists,'-or',alpha=0.5,ms=3)
+    
+#     datelab=" %.2d/%.2d/%d to %.2d/%.2d/%d" % (dateobjs[0].month,dateobjs[0].day,dateobjs[0].year,dateobjs[-1].month,dateobjs[-1].day,dateobjs[-1].year)
+
+#     plt.title(buoylab+' ('+bid+') Velocity and Daily Distance'+datelab,fontsize=20)
+#     ax.set_ylabel('Velocity (m/s)')
+#     plt.subplots_adjust(bottom=0.15)
+#     plt.grid(True)
+#     plt.savefig('UPTEMPO/WebPlots/VelocitySeries'+abbv+'.png')
+
+#     plt.show()
+
+#     opr=open('UPTEMPO/transferRecord.dat','r')
+#     tr=opr.read()
+#     opr.close()
+#     tr=tr.split('\n')
+        
+#     outwrite='UPTEMPO/WebPlots/VelocitySeries'+abbv+'.png WebPlots/VelocitySeries'+abbv+'.png'
+#     if outwrite not in tr:
+#         tr.append(outwrite)
+#         opw=open('UPTEMPO/transferRecord.dat','w')
+#         for t in tr: opw.write(t+'\n')
+#         opw.close()
+        
     
 def TrackMaps(bid):
     
@@ -448,5 +602,5 @@ def Plot_UpTempO():
     for c in curbuoys:
         TimeSeriesPlots(c)
         TimeSeriesPlots(c,quan='Pressure')
-        VelocitySeries(c)
-        
+        # VelocitySeries(c)
+        exit(-1)

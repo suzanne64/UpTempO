@@ -15,8 +15,6 @@ from ftplib import FTP
 def StatsReport():
 
     curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
-    print(deadbuoys)
-    exit(-1)
 
     oph=open('UPTEMPO/WebPlots/STATS-REPORT.txt','r')
     have=oph.read()
@@ -28,7 +26,6 @@ def StatsReport():
         haveinf[sh[10]]=h  # makes the buoy ID the key
         if sh[10] == '300034013618650':
             print(haveinf)
-    exit(-1)
     
     for b in orderbuoys:
         if (b in curbuoys) or (b in newdead):
@@ -120,7 +117,6 @@ def StatsReport():
 
     opw=open('UPTEMPO/WebPlots/STATS-REPORT.txt','w')
     for b in orderbuoys:
-        print('line 119',b)
         opw.write(haveinf[b]+'\n')
     opw.close()
 
@@ -147,15 +143,15 @@ def UploadToPSC():
     ftp.cwd('UpTempO')
 
 
-    for f in tfiles:
-        tup=f.split(' ')
-        tofile=tup[1]
-        fromfile=tup[0]
-        try:
-            ftp.storbinary('STOR '+tofile,open(fromfile,'rb'))
-            print('TRANSFER SUCCESSFUL: '+tofile)
-        except ftplib.all_errors:
-            print('This data file did not go: '+tofile)
+    # for f in tfiles:
+    #     tup=f.split(' ')
+    #     tofile=tup[1]
+    #     fromfile=tup[0]
+    #     try:
+    #         ftp.storbinary('STOR '+tofile,open(fromfile,'rb'))
+    #         print('TRANSFER SUCCESSFUL: '+tofile)
+    #     except ftplib.all_errors:
+    #         print('This data file did not go: '+tofile)
             
 
     print('Transfering Data Files...')

@@ -18,7 +18,7 @@ def userCred(user):
     psswd={'WB_Ermold':'warmbuoy','pscapluw':'microstar'}
     return psswd[user]
 
-def getPG(bid,user,daysago=25):
+def getPG(bid,user,daysago=50):
     #user = 'WB_Ermold' or 'pscapluw'
     psswd=userCred(user)
 

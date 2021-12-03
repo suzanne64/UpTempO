@@ -15,7 +15,7 @@ def upupData():
     
     opdat=open('UPTEMPO/DataFilesToTransfer.dat','w')
 
-    reporting,dead,order,newdead=BM.getBuoys()  
+    reporting,dead,order,newdead=BM.getBuoys() 
 
     #---- Update Data ----
     for r in reporting:  # reporting is a dict, keys are buoy ID
@@ -54,6 +54,7 @@ def upupPlots():
         if c not in nopresbids:
             uplots.TimeSeriesPlots(bid=c,quan='Pressure')
         uplots.VelocitySeries(c)
+        # uplots.Batt_Sub(c)
 ##        uplots.TrackMaps(c)
 
 ##    uplots.OverviewMap()
@@ -64,8 +65,8 @@ def upupGo():
     upy.UploadToPSC()
         
 if __name__=='__main__':
-    upupData()
-    #upupPlots()
-
+    #upupData()
+    upupPlots()
+    #upupGo()
 
 
