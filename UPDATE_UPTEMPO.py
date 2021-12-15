@@ -24,15 +24,16 @@ def upupData():
             print('getting '+r+' from PG:'+user)
             upd.getPG(r,user)
             upp.processPG(r)
-            datpath=upp.WebFormat(r)
+            datpath, latestupdate = upp.WebFormat(r)
         if source == 'ARGOS':
             print('getting '+r+' from ARGOS:'+user)
             upd.getARGOS(r)
             upp.processARGOS(r)
-            datpath=upp.WebFormat(r,order=1,fts=0)
+            datpath, latestupdate = upp.WebFormat(r,order=1,fts=0)
             
         fname=datpath.split('/')[-1]
         opdat.write(datpath+' WebDATA/'+fname+'\n')
+        print('line 36',fname)
 
     if newdead:
         for nd in newdead:
@@ -43,18 +44,21 @@ def upupData():
 
     opdat.close()
     
-    upy.StatsReport()
+    upy.StatsReport(latestupdate)
             
             
 def upupPlots():
     nopresbids=['300534062158460','300534062158480']
+    nosalibids=['300534060051570','300534060251600','300534060649670','300234068519450']
     curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
     for c in curbuoys:
         uplots.TimeSeriesPlots(bid=c)
         if c not in nopresbids:
             uplots.TimeSeriesPlots(bid=c,quan='Pressure')
+        if c not in nosalibids:
+            uplots.TimeSeriesPlots(bid=c,quan='Salinity')
         uplots.VelocitySeries(c)
-        # uplots.Batt_Sub(c)
+        uplots.Batt_Sub(c)
 ##        uplots.TrackMaps(c)
 
 ##    uplots.OverviewMap()
@@ -65,8 +69,8 @@ def upupGo():
     upy.UploadToPSC()
         
 if __name__=='__main__':
-    #upupData()
+    # upupData()
     upupPlots()
-    #upupGo()
+    # upupGo()
 
 

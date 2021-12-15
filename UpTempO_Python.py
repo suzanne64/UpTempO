@@ -12,7 +12,7 @@ import ftplib
 from ftplib import FTP
 
 
-def StatsReport():
+def StatsReport(lupdate):
 
     curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
 
@@ -23,8 +23,8 @@ def StatsReport():
     haveinf={}
     for h in have:
         sh=h.split(',')
-        haveinf[sh[10]]=h  # makes the buoy ID the key
-        if sh[10] == '300034013618650':
+        haveinf[sh[11]]=h  # makes the buoy ID the key
+        if sh[11] == '300034013618650':
             print(haveinf)
     
     for b in orderbuoys:
@@ -70,7 +70,7 @@ def StatsReport():
                 else: nors='N '
 
                 depll=sdeplat+nors+sdeplon+eorw
-                statlist=[binf['name'][1],binf['vessel'],depdate,depll,'','',abbv,'NA','0',binf['name'][0],b,'','1']
+                statlist=[binf['name'][1],binf['vessel'],depdate,depll,'','','',abbv,'NA','0',binf['name'][0],b,'','1']
             else:
                 statlist=statline.split(',')
 
@@ -100,17 +100,18 @@ def StatsReport():
             else: eorw='E'
 
             lastll=slastlat+nors+slastlon+eorw
-
  
             depdate=depdate.split(' ')[0]
             amlistening=binf['listening']
 
             statlist[4]=lastdate
             statlist[5]=lastll
-            if statlist[11] == 'NA':
+            statlist[6]=lupdate
+
+            if statlist[12] == 'NA' or not statlist[12]:
                 wmo=BT.lookupWMO(b)
-                statlist[11]=wmo
-            statlist[12]=amlistening
+                statlist[12]=wmo
+            statlist[13]=amlistening
             jout=','.join(statlist)
             haveinf[b]=jout
 
@@ -143,15 +144,15 @@ def UploadToPSC():
     ftp.cwd('UpTempO')
 
 
-    # for f in tfiles:
-    #     tup=f.split(' ')
-    #     tofile=tup[1]
-    #     fromfile=tup[0]
-    #     try:
-    #         ftp.storbinary('STOR '+tofile,open(fromfile,'rb'))
-    #         print('TRANSFER SUCCESSFUL: '+tofile)
-    #     except ftplib.all_errors:
-    #         print('This data file did not go: '+tofile)
+    for f in tfiles:
+        tup=f.split(' ')
+        tofile=tup[1]
+        fromfile=tup[0]
+        try:
+            ftp.storbinary('STOR '+tofile,open(fromfile,'rb'))
+            print('TRANSFER SUCCESSFUL: '+tofile)
+        except ftplib.all_errors:
+            print('This data file did not go: '+tofile)
             
 
     print('Transfering Data Files...')

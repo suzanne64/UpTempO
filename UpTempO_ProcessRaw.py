@@ -268,16 +268,12 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     data=data.replace(';',' ')
     data=data.split('\n')
     data=[da for da in data if da]
-    print()
     header=data[0]
-    print(bid,header)
     data=data[1:]
     nd=len(data)
 
     shead=header.split(' ')
 
-    # binf=BM.BuoyMaster(bid)
-    # binfn1="%.2d" % int(binf['name'][1])
 
     fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel']+'-Last.dat'
 
@@ -311,7 +307,75 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
           '% 3 = hour (GMT)',
           '% 4 = Latitude (N)',
           '% 5 = Longitude (E)']
+    
+    # remake  columns
+    tdepths=binf['tdepths']; #print(tdepths)
+    eddepths=binf['tdepths'].copy()
+     
+    if 'pdepths' in binf: pdepths=binf['pdepths']; #print(pdepths)
+    if 'ddepths' in binf: ddepths=binf['ddepths']; #print(ddepths)
+    if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']; #print(CTDSs_depths)
+    if 'sdepths' in binf: sdepths=binf['sdepths']; #print(sdepths)
 
+    shead=header.split(' ')[6:]
+    col=6
+
+    for h in shead:
+        if 'T' in h:
+            if 'CTD' not in h:
+                if h == 'BATT':
+                    strcol="%d" % col
+                    lineout='% '+strcol+' = Battery Voltage (V)'
+                else:
+                    if h == 'Ta':
+                        strcol="%d" % col
+                        lineout='% '+strcol+' = Air Temperature (C)'
+                        col+=1
+                    else:
+                        cdep=tdepths.pop(0)
+                        strdep,strcol=strDepColi(cdep,col)
+                        lineout='% '+strcol+' = Temperature at nominal depth '+strdep+' (m)'
+                col+=1
+
+        if 'S' in h:
+            if (h != 'SUB') & ('CTD' not in h):
+                cdep=sdepths.pop(0)
+                strdep,strcol=strDepColi(cdep,col)
+                lineout='% '+strcol+' = Salinity at nominal depth '+strdep+' (m)'
+                col+=1
+            
+        if 'D' in h:
+            cdep=eddepths.pop(0)
+            strdep,strcol=strDepColi(cdep,col)
+            lineout='% '+strcol+' = Estimated depth at nominal depth '+strdep+' (m)'
+            col+=1
+            
+
+        if 'P' in h:
+            if h == 'BP':
+                strcol="%d" % col
+                lineout='% '+strcol+' = Sea Level Pressure (mBar)'
+            else:
+                cdep=pdepths.pop(0)
+                strdep,strcol=strDepColi(cdep,col)
+                lineout='% '+strcol+' = Ocean Pressure (dB) at Sensor #'+h[1]+'(Nominal Depth = '+strdep+' m)'
+            col+=1
+
+        if 'CTD-S' in h:
+            cdep=CTDSs_depths.pop(0)
+            strdep,strcol=strDepColi(cdep,col)
+            lineout='% '+strcol+' = Salinity at Sensor #'+h[-1]+'(Nominal Depth = '+strdep+' m)'
+            col+=1
+
+        if h == 'SUB':
+            strcol="%d" % col
+            lineout='% '+strcol+' = Submergence Percent'
+            col+=1
+            
+
+        webhead.append(lineout)
+
+    webhead.append('%END')
     
     if os.path.isfile('UPTEMPO/WebData/'+fname):
         opweb=open('UPTEMPO/WebData/'+fname,'r')
@@ -320,17 +384,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         have=have.split('\n')
         have=[ha for ha in have if ha]
         header=[ha for ha in webhead]
-        # header=[ha for ha in have if '%' in ha]
-        # # if bid == '300534062158480':
-        # print('line 278')
-        # print(header)
-        # print()
-        # print()
-        # exit(-1)
         hdata=[ha for ha in have if '%' not in ha]
-
-        # header[5]='%DATE OF LAST TRANSMISSION: '+dolt
-        # header[6]='%DATE OF LAST DATA FILE UPDATE: '+lastUpdate
 
         for d in data:
             if d not in hdata: hdata.append(d)
@@ -342,77 +396,6 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     else:
         # depline=data[0].split(' ')
 
-        tdepths=binf['tdepths']
-        eddepths=binf['tdepths'].copy()
-        
-        if 'pdepths' in binf: pdepths=binf['pdepths']
-        if 'ddepths' in binf: ddepths=binf['ddepths']
-        if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']
-        if 'sdepths' in binf: sdepths=binf['sdepths']
-       # print(sdepths)
-        
-        
-
-      #  print(tdepths)
-        shead=header.split(' ')[6:]
-        col=6
-
-        for h in shead:
-            if 'T' in h:
-                if 'CTD' not in h:
-                    if h == 'BATT':
-                        strcol="%d" % col
-                        lineout='% '+strcol+' = Battery Voltage (V)'
-                    else:
-                        if h == 'Ta':
-                            strcol="%d" % col
-                            lineout='% '+strcol+' = Air Temperature (C)'
-                            col+=1
-                        else:
-                            cdep=tdepths.pop(0)
-                            strdep,strcol=strDepColi(cdep,col)
-                            lineout='% '+strcol+' = Temperature at nominal depth '+strdep+' (m)'
-                    col+=1
-
-            if 'S' in h:
-                if (h != 'SUB') & ('CTD' not in h):
-                    cdep=sdepths.pop(0)
-                    strdep,strcol=strDepColi(cdep,col)
-                    lineout='% '+strcol+' = Salinity at nominal depth '+strdep+' (m)'
-                    col+=1
-                
-            if 'D' in h:
-                cdep=eddepths.pop(0)
-                strdep,strcol=strDepColi(cdep,col)
-                lineout='% '+strcol+' = Estimated depth at nominal depth '+strdep+' (m)'
-                col+=1
-                
-
-            if 'P' in h:
-                if h == 'BP':
-                    strcol="%d" % col
-                    lineout='% '+strcol+' = Sea Level Pressure (mBar)'
-                else:
-                    cdep=pdepths.pop(0)
-                    strdep,strcol=strDepColi(cdep,col)
-                    lineout='% '+strcol+' = Ocean Pressure (dB) at Sensor #'+h[1]+'(Nominal Depth = '+strdep+' m)'
-                col+=1
-
-            if 'CTD-S' in h:
-                cdep=CTDSs_depths.pop(0)
-                strdep,strcol=strDepColi(cdep,col)
-                lineout='% '+strcol+' = Salinity at Sensor #'+h[-1]+'(Nominal Depth = '+strdep+' m)'
-                col+=1
-
-            if h == 'SUB':
-                strcol="%d" % col
-                lineout='% '+strcol+' = Submergence Percent'
-                col+=1
-                
-
-            webhead.append(lineout)
-
-        webhead.append('%END')
 
         opw=open('UPTEMPO/WebData/'+fname,'w')
         for w in webhead: opw.write(w+'\n')
@@ -424,14 +407,15 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     else: newfname=fname.replace('Last',strtoday)
     os.system('cp UPTEMPO/WebData/'+fname+' UPTEMPO/WebData/'+newfname)
 
+    lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
 
-    return 'UPTEMPO/WebData/'+newfname    
+    return 'UPTEMPO/WebData/'+newfname, lastUpdate
     
     
                     
 #===========================
 def strDepColi(p,c):
-    strdep="%.1f" % p
+    strdep="%.2f" % p
     strcol="%d" % c
     return strdep,strcol
         
