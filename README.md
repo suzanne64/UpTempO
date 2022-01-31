@@ -11,4 +11,5 @@ Data measured by drifting buoys that are part of UpTempO Buoy Project are availa
 http://psc.apl.washington.edu/UpTempO for download. Time series plots and track maps of the buoys
 locations are also provided.
 
-![MikesBuoySchematic](https://user-images.githubusercontent.com/34384803/151840069-c0f36777-cdd8-4515-a45d-bb0e2bc0df88.gif)
+Standard Arctic Buoy Configuration
+<img src="https://user-images.githubusercontent.com/34384803/151840069-c0f36777-cdd8-4515-a45d-bb0e2bc0df88.gif" width="350">
