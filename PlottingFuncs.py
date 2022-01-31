@@ -9,11 +9,11 @@ import BuoyTools_py3_toot as BT
 
 def PolyList(nors='N'):
     if nors == 'S':
-        polypath='/Users/wendye/Dropbox/GFunctions/landbitsS/'
+        polypath='/Volumes/GoogleDrive/My Drive/UpTempO/PolyPlot2/landbitsS/'
         polyfiles=BT.FileList(polypath)
         
     else:
-        polypath='/Users/wendye/Dropbox/GFunctions/landbits/PolyPlot2/'
+        polypath='/Volumes/GoogleDrive/My Drive/UpTempO/PolyPlot2/'
         polyfiles=os.listdir(polypath)
 
     return [polyfiles,polypath]

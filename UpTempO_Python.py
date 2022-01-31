@@ -29,7 +29,7 @@ def StatsReport(lupdate):
     
     for b in orderbuoys:
         if (b in curbuoys) or (b in newdead):
-            print(b)
+            # print(b)
             if b in haveinf: statline=haveinf[b]
             else: statline=''
             
@@ -100,6 +100,7 @@ def StatsReport(lupdate):
             else: eorw='E'
 
             lastll=slastlat+nors+slastlon+eorw
+            lastbatt=slast[-2]
  
             depdate=depdate.split(' ')[0]
             amlistening=binf['listening']
@@ -107,6 +108,7 @@ def StatsReport(lupdate):
             statlist[4]=lastdate
             statlist[5]=lastll
             statlist[6]=lupdate
+            statlist[8]=lastbatt
 
             if statlist[12] == 'NA' or not statlist[12]:
                 wmo=BT.lookupWMO(b)

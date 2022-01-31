@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import numpy as np
 import os
-import datetime
-from datetime import date
+import datetime as dt
+# from datetime import date
 #import timedelta
 import sys
 import netCDF4 as nc
@@ -11,15 +11,59 @@ import PlottingFuncs as pfuncs
 from ftplib import FTP
 import urllib
 import requests
+import matplotlib.pyplot as plt
+from nsidc_download_0081_v02 import nsidc_download_0081_v02
 
 #======= Get and Process NSIDC ==============
+def getICE(strdate='default',nors='n'):
+    #strdate= yyyymmdd
+    regdict={'n':'north', 's':'south'}
+
+    if strdate == 'default':
+        objdate = dt.datetime.now() - dt.timedelta(days=1)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    else:
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d')
+
+    noFile = True
+    numDaysBack = 0
+    
+    while noFile:
+        print('ICE',strdate)
+        if numDaysBack == 7:
+            ice, icexx, iceyy = None, None, None
+            break
+        
+        # nsidc_download_0081_v02(strdate,nors)
+        icepath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/NSIDC_ICE/{regdict[nors]}/{strdate[:4]}'
+        icefile = f'NSIDC0081_SEAICE_PS_{nors.capitalize()}25km_{strdate}_v2.0.nc'
+        if os.path.exists(f'{icepath}/{icefile}'):  
+            ncdata=nc.Dataset(f'{icepath}/{icefile}')   
+            # print('flag meanings',ncdata.variables['F18_ICECON'].getncattr('flag_meanings'))
+            # print('flag values',ncdata.variables['F18_ICECON'].getncattr('flag_values'))
+            # print(ncdata['F18_ICECON'].shape)
+            ice=np.squeeze(ncdata['F18_ICECON'])  # np.squeeze converts nc dataset to np array
+            ice[ice==251] = 1.  # fill pole_hole_mask, flags are not scaled
+            y=ncdata['y'][:]
+            x=ncdata['x'][:]
+            icexx, iceyy = np.meshgrid(x,y)    
+            noFile = False
+        else:
+            objdate = objdate - dt.timedelta(days=1)
+            strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+            numDaysBack += 1
+    
+    return strdate,ice,icexx,iceyy
+
+#======= Get and Process NSIDC ==============
+# WErmold code downloading .bin files from sidads.colorado.edu
 def getNSIDCice(strdate='default',nors='n'):
     #strdate= yyyymmdd
 
     if strdate == 'default':
-        today=datetime.datetime.now()
+        today=dt.datetime.now()
         strtod="%d%.2d%.2d" % (today.year,today.month,today.day)
-        yest=today-datetime.timedelta(days=1)
+        yest=today-dt.timedelta(days=1)
         strdate="%d%.2d%.2d" % (yest.year,yest.month,yest.day)
 
     path='/Users/WendyE/Dropbox/RecentWarming/NSIDCiceDATA/'
@@ -44,14 +88,16 @@ def getNSIDCice(strdate='default',nors='n'):
     except:
         ftp.quit()
         print(servfile+' was not found on the nsidc server.')
-    
+        
+#======= Get and Process NSIDC ==============
+# Wermold code to process .bin files and save as .txt
 def processNSIDCice(strdate='default',nors='n'):
     #strdate=yyyymmdd
 
     if strdate == 'default':
-        today=datetime.datetime.now()
+        today=dt.datetime.now()
         strtod="%d%.2d%.2d" % (today.year,today.month,today.day)
-        yest=today-datetime.timedelta(days=1)
+        yest=today-dt.timedelta(days=1)
         strdate="%d%.2d%.2d" % (yest.year,yest.month,yest.day)
 
     if nors == 'n': regpath='north'
@@ -59,6 +105,9 @@ def processNSIDCice(strdate='default',nors='n'):
 
     cadd='f18'
     path='/Users/wendye/Dropbox/RecentWarming/NSIDCiceDATA/'+regpath+'/nt_'+strdate+'_'+cadd+'_nrt_'+nors+'.bin'
+    #path='/Users/wendye/Dropbox/RecentWarming/nt_'+strdate+'_'+cadd+'_nrt_'+nors+'.bin'
+    #path='/Users/wendye/Dropbox/RecentWarming/NSIDCiceDATA/'+strdate[0:4]+'/nt_'+strdate+'_'+cadd+'_v1.1_n.bin'
+    print(path)
 
     data=np.fromfile(path,dtype='ubyte')
     data=data[300:]
@@ -78,8 +127,8 @@ def processNSIDCice(strdate='default',nors='n'):
     
 #============== Get and process SLP ================
 def getNCEPslp(year):
-    servfile='slp.'+year+'.nc'
-    localput='/Users/WendyE/Dropbox/RecentWarming/SeaLevelPressure/slp.'+year+'.nc'
+    servfile=f'slp.{year}.nc'
+    localput=f'/Volumes/GoogleDrive/My Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
     localfile=open(localput,'wb')
 
     #ftp://ftp.cdc.noaa.gov/Datasets/ncep.reanalysis.dailyavgs/surface/slp.2016.nc
@@ -106,7 +155,7 @@ def getNCEPslp(year):
     
 def processSLP(year,writexy=0):
 
-    path='/Users/wendye/Dropbox/RecentWarming/SeaLevelPressure/slp.'+year+'.nc'
+    path=f'/Volumes/GoogleDrive/My Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
     ncdata=nc.Dataset(path)
     #for dim in ncdata.dimensions.values(): print(dim)
     #for var in ncdata.variables.values(): print(var)
@@ -155,13 +204,14 @@ def processSLP(year,writexy=0):
             np.savetxt('Satellite_Fields/SLP/slp_'+strdate+'.txt',cslp,fmt="%.2f")
            
 #========= Get and Process SST ==================
+# WErmold code to download and save as ascii
 def processSST(strdate='default'):
     #strdate = 'yyyymmdd'
-    
+    print(strdate)
     if strdate == 'default':
-        today=datetime.datetime.now()
+        today=dt.datetime.now()
         strtod="%d%.2d%.2d" % (today.year,today.month,today.day)
-        yest=today-datetime.timedelta(days=1)
+        yest=today-dt.timedelta(days=1)
         strdate="%d%.2d%.2d" % (yest.year,yest.month,yest.day)
 
         year="%d" % (yest.year)
@@ -170,61 +220,123 @@ def processSST(strdate='default'):
         year=strdate[0:4]
         month=strdate[4:6]
         
-    thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
+    #thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
+    thefile='oisst-avhrr-v02r01.'+strdate+'.nc'
     #if strdate != 'default': thefile='oisst-avhrr-v02r01.'+strdate+'.nc'
-    theurl=('https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/'+year+month+'/'+thefile)
+    theurl='https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/'+year+month+'/'+thefile
+    if not os.path.isfile('Satellite_Fields/SST/'+year+'/MyData/SST-'+strdate+'.dat'):
+        ncpath='/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/OISST-AVHRR-v2.1/'+thefile
+        if not os.path.isfile('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/OISST-AVHRR-v2.1/'+thefile):
+            thefile=thefile.replace('.nc','_preliminary.nc')
+            ncpath='/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/OISST-AVHRR-v2.1/'+thefile
 
-    
-    ncpath='/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/OISST-AVHRR-v2.1/'+thefile
-    print(ncpath)
-    #----download if required---
-    if not os.path.isfile(ncpath):
-        with requests.get(theurl) as resp:
-            ncdata=nc.Dataset('in-mem-file',mode='r',memory=resp.content)
-    else:      
-        ncdata=nc.Dataset(ncpath)
+        print(ncpath)
+        #----download if required---
+        if not os.path.isfile(ncpath):
+            with requests.get(theurl) as resp:
+                ncdata=nc.Dataset('in-mem-file',mode='r',memory=resp.content)
+                #return ncdata
+                #opw=open(ncpath,'wb')
+                #opw.write(ncdata)
+                #opw.close()
+                
+            #ncdata=nc.Dataset(theurl)
+        else:      
+            ncdata=nc.Dataset(ncpath)
 
-    sst=ncdata['sst']
-    lat=ncdata['lat']
-    lon=ncdata['lon']
-    lat=np.asarray(lat)
-    lon=np.asarray(lon)
-    sst=sst[0,0,:,:]
+        for dim in ncdata.dimensions.values(): print(dim)
+        for var in ncdata.variables.values(): print(var)
+        
+        sst=ncdata['sst']
+        lat=ncdata['lat']
+        lon=ncdata['lon']
+        lat=np.asarray(lat)
+        lon=np.asarray(lon)
+        sst=sst[0,0,:,:]
 
-##    print('sst: ')        
-##    print(np.shape(sst))   (1,1,720,1440)
-##    print('lat:')
-##    print(np.shape(lat))   (720,)
-##    print('lon:')
-##    print(np.shape(lon))   (1440,)
-##
+    ##    print('sst: ')        
+    ##    print(np.shape(sst))   (1,1,720,1440)
+    ##    print('lat:')
+    ##    print(np.shape(lat))   (720,)
+    ##    print('lon:')
+    ##    print(np.shape(lon))   (1440,)
+    ##
 
-    wgood=sst > -999.0
-    sst[wgood]=sst[wgood]/100.
-    sst=sst[500:720,:]
-    lat=lat[500:720]
+        wgood=sst > -999.0
+        sst[wgood]=sst[wgood]/100.
+        sst=sst[500:720,:]
+        lat=lat[500:720]
 
-    sqlats=np.zeros((220,1440))
-    sqlons=np.zeros((220,1440))
-    for r in range(1440):
-        sqlats[:,r]=lat
-    for r in range(220):
-        sqlons[r,:]=lon
+        sqlats=np.zeros((220,1440))
+        sqlons=np.zeros((220,1440))
+        for r in range(1440):
+            sqlats[:,r]=lat
+        for r in range(220):
+            sqlons[r,:]=lon
 
-##    flatlat=sqlats.flatten()
-##    flatlon=sqlons.flatten()
-##    sstxx,sstyy=pfuncs.LLtoXY(flatlat,flatlon,0.0)
-##    sqxx=np.reshape(sstxx,(220,1440))
-##    sqyy=np.reshape(sstyy,(220,1440))
-##    np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-XX.dat',sqxx,fmt="%.4f")
-##    np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-YY.dat',sqyy,fmt="%.4f")
+    ##    flatlat=sqlats.flatten()
+    ##    flatlon=sqlons.flatten()
+    ##    sstxx,sstyy=pfuncs.LLtoXY(flatlat,flatlon,0.0)
+    ##    sqxx=np.reshape(sstxx,(220,1440))
+    ##    sqyy=np.reshape(sstyy,(220,1440))
+    ##    np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-XX.dat',sqxx,fmt="%.4f")
+    ##    np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-YY.dat',sqyy,fmt="%.4f")
 
-    np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+strdate+'.dat',sst,fmt="%.2f")
-    np.savetxt('Satellite_Fields/SST/'+year+'/SST-'+strdate+'.dat',sst,fmt="%.2f")
-    
+        np.savetxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+strdate+'.dat',sst,fmt="%.2f")
+        np.savetxt('Satellite_Fields/SST/'+year+'/MyData/SST-'+strdate+'.dat',sst,fmt="%.2f")
+        
         
     
+#========= Get SST ==================
+def getSST(strdate='default'):
+    #strdate = 'yyyymmdd'
+    
+    if strdate == 'default':
+        objdate = dt.datetime.now() - dt.timedelta(days=1)
+        strdate="%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    else:
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d')
+    year="%d" % (objdate.year)   # this infor for url sub directories
+    month="%.2d" % (objdate.month)
+    print(strdate)
+        
+    thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
+    theurl=('https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/'+year+month+'/'+thefile)
+    
+    ncpath=f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/sstNOAA/{year}/{thefile}'
+    
+    #----download yesterday's data, or go back one day at a time for one week to get data
+    noFile = True
+    numDaysBack = 0
+    while noFile: 
+        if numDaysBack==7:
+            break
+        request = urllib.request.Request(theurl)
+        request.get_method = lambda: 'HEAD'
+        try: 
+            urllib.request.urlopen(request)
+            noFile = False
+            urllib.request.urlretrieve(theurl,ncpath)
+            break
+        except: # urllib.request.HTTPError:
+            numDaysBack += 1
+            objdate = objdate - dt.timedelta(days=1)
+            strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+            thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
+            theurl = f'https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/{objdate.year}{objdate.month}/{thefile}'
+            ncpath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/sstNOAA/{objdate.year}/{thefile}'
+            
+    if numDaysBack<7:
+        ncdata=nc.Dataset(ncpath)   
+        sst=np.squeeze(ncdata['sst'])
+        sst[sst<-900] = np.nan  # set invalids=-999 to nan
+        lat=ncdata['lat'][:]
+        lon=ncdata['lon'][:]
+        sstlon, sstlat = np.meshgrid(lon,lat)
+    else:
+        sst,sstlon,sstlat = None, None, None
 
+    return strdate, sst, sstlon, sstlat
     
 def processNCEPta(year):
 

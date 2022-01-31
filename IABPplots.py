@@ -1,7 +1,6 @@
 #!/usr/bin/python
-import datetime
-import sys
-import os
+import datetime as dt
+import sys, os
 import BuoyTools_py3_toot as BT
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,7 +11,9 @@ import cmocean
 #import Utilities_py3 as ut
 import ProcessFields as pfields
 #import timedelta
-from matplotlib.dates import (YEARLY,MONTHLY,WEEKLY,DAILY,DateFormatter,rrulewrapper,RRuleLocator,drange)
+# from matplotlib.dates import (YEARLY,MONTHLY,WEEKLY,DAILY,DateFormatter,rrulewrapper,RRuleLocator,drange)
+import cartopy.crs as ccrs
+import cartopy.feature
 
 ##subdomains=[[domain],[-3585.,0.,0.,4200],[0.,3100.,0.,4200.],[-3585.,0.,-3500.,0.],[0.,3100.,-3500.,0.0],[-1792.,1792.,-2100.,2100]]
 ##domlab=['','UL','UR','LL','LR','C']
@@ -21,10 +22,14 @@ def fieldCoords(field='ice',reg='north'):
 
     fieldpath='Satellite_Fields/'
     if field == 'ice':
+        if not os.path.exists(fieldpath+'NSIDC_ICE/'+reg+'/xx.txt'):
+            pfields.getNSIDCice()
         xx=np.loadtxt(fieldpath+'NSIDC_ICE/'+reg+'/xx.txt')
         yy=np.loadtxt(fieldpath+'NSIDC_ICE/'+reg+'/yy.txt')
 
     if field == 'slp':
+        if not os.path.exists(fieldpath+'SLP/SLP_XX.dat'):
+            pfields.getNCEPslp()
         xx=np.loadtxt(fieldpath+'SLP/SLP_XX.dat')
         yy=np.loadtxt(fieldpath+'SLP/SLP_YY.dat')
 
@@ -131,7 +136,40 @@ def serverCode(domain,quan):
     return out
 
 
-def blankIceMap(cdomain='Overview',udomain=[],strdate='current',fsize=(8.85,10),rot=55.0,icelevels=[0.0,0.15,0.30,0.45,0.60,0.75,0.90,1.0]):
+# def blankIceMap(cdomain='Overview',udomain=[],strdate='current',fsize=(8.85,10),rot=55.0,icelevels=[0.0,0.15,0.30,0.45,0.60,0.75,0.90,1.0]):
+#     #strdate='yyyymmdd'
+    
+#     if cdomain == 'UpTempO':
+#         ucolors=['0.4','0.5','0.7','0.75','0.8','1.0']
+#         icelevels=[0.15,0.2,0.3,0.4,0.5,0.75,1.0]
+#         fsize=(10,5)
+#         rot=0
+
+#     if not udomain:
+#         udomain=getDomain(cdomain)
+#     if strdate=='current':
+#         dates=BT.getDates()
+#         stryest=dates[0].replace('-','')
+#     else: stryest=strdate
+
+#     plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
+
+#     #----plot ice----
+#     ucmap=cmocean.cm.ice
+#     if cdomain == 'UpTempO': ucmap.set_over('white')
+#     else: ucmap.set_over('azure')
+
+#     icexx,iceyy=fieldCoords(field='ice')
+#     icexx,iceyy=rotField(icexx,iceyy,rot)
+#     icedata=np.loadtxt('Satellite_Fields/NSIDC_ICE/north/'+stryest+'.txt')
+#     if cdomain == 'UpTempO':
+#         icec=plt.contourf(icexx,iceyy,icedata,icelevels,colors=ucolors,vmax=.9)
+#     else:
+#         icec=plt.contourf(icexx,iceyy,icedata,icelevels,vmin=0.15,cmap=ucmap)
+
+#     return plt
+
+def ICEMap(cdomain='Overview',udomain=[],strdate='current',fsize=(8.85,10),rot=55.0,icelevels=[0.0,0.15,0.30,0.45,0.60,0.75,0.90,1.0]):
     #strdate='yyyymmdd'
     
     if cdomain == 'UpTempO':
@@ -147,22 +185,22 @@ def blankIceMap(cdomain='Overview',udomain=[],strdate='current',fsize=(8.85,10),
         stryest=dates[0].replace('-','')
     else: stryest=strdate
 
-    plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
+    # plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
 
-    #----plot ice----
-    ucmap=cmocean.cm.ice
-    if cdomain == 'UpTempO': ucmap.set_over('white')
-    else: ucmap.set_over('azure')
+    # #----plot ice----
+    # ucmap=cmocean.cm.ice
+    # if cdomain == 'UpTempO': ucmap.set_over('white')
+    # else: ucmap.set_over('azure')
 
-    icexx,iceyy=fieldCoords(field='ice')
-    icexx,iceyy=rotField(icexx,iceyy,rot)
-    icedata=np.loadtxt('Satellite_Fields/NSIDC_ICE/north/'+stryest+'.txt')
-    if cdomain == 'UpTempO':
-        icec=plt.contourf(icexx,iceyy,icedata,icelevels,colors=ucolors,vmax=.9)
-    else:
-        icec=plt.contourf(icexx,iceyy,icedata,icelevels,vmin=0.15,cmap=ucmap)
+    # icexx,iceyy=fieldCoords(field='ice')
+    # icexx,iceyy=rotField(icexx,iceyy,rot)
+    # icedata=np.loadtxt('Satellite_Fields/NSIDC_ICE/north/'+stryest+'.txt')
+    # if cdomain == 'UpTempO':
+    #     icec=plt.contourf(icexx,iceyy,icedata,icelevels,colors=ucolors,vmax=.9)
+    # else:
+    #     icec=plt.contourf(icexx,iceyy,icedata,icelevels,vmin=0.15,cmap=ucmap)
 
-    return plt
+    # return plt
 
 def blankBathMap(cdomain='Overview',udomain=[],fsize=(8.85,10),rot=55.0):
 
@@ -173,14 +211,14 @@ def blankBathMap(cdomain='Overview',udomain=[],fsize=(8.85,10),rot=55.0):
     if not udomain:
         udomain=getDomain(cdomain)
 
-    plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
+    pltt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
 
     bscalegray=[50.,100.,500.,1000.,2000.,3000.]
     bscaleblack=[28.,60.]
     deepfillcol='beige' 
-    bath=np.loadtxt('/Users/wendye/Dropbox/GFunctions/BATH_FIELDS/6.BATH-1041x1094.dat')
-    bxx=np.loadtxt('/Users/wendye/Dropbox/GFunctions/BATH_FIELDS/6.BATHXX-1041x1094.dat')
-    byy=np.loadtxt('/Users/wendye/Dropbox/GFunctions/BATH_FIELDS/6.BATHYY-1041x1094.dat')
+    bath=np.loadtxt('/Volumes/GoogleDrive/My Drive/UpTempO/Bathymetry_Files/6.BATH-1041x1094.dat')
+    bxx=np.loadtxt('/Volumes/GoogleDrive/My Drive/UpTempO/Bathymetry_Files/6.BATHXX-1041x1094.dat')
+    byy=np.loadtxt('/Volumes/GoogleDrive/My Drive/UpTempO/Bathymetry_Files/6.BATHYY-1041x1094.dat')
 
     if rot:
         sqbxx=np.zeros((1094,1041))
@@ -194,14 +232,79 @@ def blankBathMap(cdomain='Overview',udomain=[],fsize=(8.85,10),rot=55.0):
         bxx=np.reshape(bxx,(1094,1041))
         byy=np.reshape(byy,(1094,1041))
         
-    bathc=plt.contour(bxx,byy,-bath,bscalegray,colors='gray',linewidths=.5)
-    if cdomain == 'UpTempO': plt.contour(bxx,byy,-bath,bscaleblack,colors='black',linewidths=1)
-    plt.contourf(bxx,byy,-bath,[3000.,9000.],colors=deepfillcol)
-    plt.axis('off')
+    bathc=pltt.contour(bxx,byy,-bath,bscalegray,colors='gray',linewidths=.5)
+    if cdomain == 'UpTempO': pltt.contour(bxx,byy,-bath,bscaleblack,colors='black',linewidths=1)
+    pltt.contourf(bxx,byy,-bath,[3000.,9000.],colors=deepfillcol)
+    pltt.axis('off')
     
-    return plt
+    return pltt
 
-def blankSSTMap(cdomain='Overview',strdate='current',udomain=[],fsize=(8.85,10),rot=55.0,pice=1):
+# def blankSSTMap(cdomain='Overview',strdate='current',udomain=[],fsize=(8.85,10),rot=55.0,pice=1):
+    
+#     # if cdomain == 'UpTempO':
+#     #     fsize=(10,5)
+#     #     rot=0
+
+#     if not udomain:
+#         udomain=getDomain(cdomain)
+
+#     if strdate=='current':
+#         dates=BT.getDates()
+#         stryest=dates[0].replace('-','')
+#     else: stryest=strdate
+#     year=stryest[0:4]
+
+
+#     featcolors=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown']
+#     #featbar=[-30.0,-20.,-10.,-5.,-1.,0,1,5.,10.,20.,30.]
+#     if cdomain=='UpTempO': featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]
+#     else: featbar=[-30.,-20.,-10.,-5.,-1.,0.0,1.0,5.0,10.,20.,30.]
+
+#     if not os.path.isfile('/Volumes/GoogleDrive/My Drive/UpTempO/NOAA-Daily-SST/'+year+'/SST-'+stryest+'.dat'):
+#         try:
+#             if strdate=='current': pfields.processSST()
+#             else: pfields.processSST(strdate=stryest)
+#         except:            
+#             stryest=BT.findYest(stryest)
+#             print('Trying to find SST data for '+stryest)
+#             if not os.path.isfile('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat'):
+#                 stryest=BT.findYest(stryest)
+#                 print('Trying to find SST data for '+stryest)
+#                 if not os.path.isfile('/Users/wendye/Drobox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat'):
+                    
+#                     print('SST IS NOT UPDATING')
+#                     print('NOT PLOTTING SST')
+
+#                     plt=blankIceMap(cdomain=cdomain)
+#                     return plt
+                    
+#     sst=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat')
+#     sstxx=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-XX.dat')
+#     sstyy=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-YY.dat')
+#     sstxx,sstyy=rotField(sstxx,sstyy,rot)
+
+#     plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
+#     plt.contourf(sstxx,sstyy,sst*100.,featbar,colors=featcolors,extend='both')
+#     if pice:
+#         icexx,iceyy = fieldCoords(field='ice')
+#         icexx,iceyy = rotField(icexx,iceyy,rot)
+#         icedata = np.loadtxt('Satellite_Fields/NSIDC_ICE/north'+stryest+'.txt')
+#         icelevels = [0.15,0.30,0.45,0.60,0.75,0.90,1.0]
+#         if cdomain == 'UpTempO':
+#             ucolors=['0.4','0.5','0.7','0.75','0.8','1.0']
+#             icelevels=[0.15,0.2,0.3,0.4,0.5,0.75,1.0]
+#             icec=plt.contourf(icexx,iceyy,icedata,icelevels,colors=ucolors,vmax=.9)
+#         else:
+#             ucmap=cmocean.cm.ice
+#             ucmap.set_over('azure')
+#             icec=plt.contourf(icexx,iceyy,icedata,icelevels,vmax=.9,cmap=ucmap)
+               
+        
+#     plt.axis('off')
+
+#     return plt
+
+def SSTMap(strdate='default',cdomain='Overview',udomain=[],pice=1,figsize=(8.85,10)):
     
 ##    if cdomain == 'UpTempO':
 ##        fsize=(10,5)
@@ -210,59 +313,64 @@ def blankSSTMap(cdomain='Overview',strdate='current',udomain=[],fsize=(8.85,10),
     if not udomain:
         udomain=getDomain(cdomain)
 
-    if strdate=='current':
-        dates=BT.getDates()
-        stryest=dates[0].replace('-','')
-    else: stryest=strdate
-    year=stryest[0:4]
-
-
+    if strdate=='default':
+        objdate = dt.datetime.now()
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    else:
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d')
+    print(strdate)
+    
+    sstdate, sst, sstlon, sstlat = pfields.getSST(strdate)
+    if pice:
+        icedate, ice, icexx, iceyy = pfields.getICE(strdate,nors='n')
+        
+        
     featcolors=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown']
     #featbar=[-30.0,-20.,-10.,-5.,-1.,0,1,5.,10.,20.,30.]
-    if cdomain=='UpTempO': featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]
-    else: featbar=[-30.,-20.,-10.,-5.,-1.,0.0,1.0,5.0,10.,20.,30.]
+    if cdomain=='UpTempO':
+        featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]
+        ucolors=['0.4','0.5','0.7','0.75','0.8','1.0']
+        icelevels=[0.15,0.2,0.3,0.4,0.5,0.75,1.0]
+        outlabs=['Alaska','Russia','Greenland','85N','80N','75N','90E','135E','180E','135W','90W']
+    else:
+        featbar=[-30.,-20.,-10.,-5.,-1.,0.0,1.0,5.0,10.,20.,30.]
 
-    if not os.path.isfile('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat'):
-        try:
-            if strdate=='current': pfields.processSST()
-            else: pfields.processSST(strdate=stryest)
-        except:
-            stryest=BT.findYest(stryest)
-            print('Trying to find SST data for '+stryest)
-            if not os.path.isfile('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat'):
-                stryest=BT.findYest(stryest)
-                print('Trying to find SST data for '+stryest)
-                if not os.path.isfile('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat'):
-                
-                    print('SST IS NOT UPDATING')
-                    print('NOT PLOTTING SST')
-
-                    plt=blankIceMap(cdomain=cdomain)
-                    return plt
                     
-                
-    sst=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/'+year+'/MyData/SST-'+stryest+'.dat')
-    sstxx=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-XX.dat')
-    sstyy=np.loadtxt('/Users/wendye/Dropbox/RecentWarming/NOAA-Daily-SST/SST-YY.dat')
-    sstxx,sstyy=rotField(sstxx,sstyy,rot)
-
-    plt=PF.ArcticMap(domain=udomain,fsize=fsize,rot=rot)
-    plt.contourf(sstxx,sstyy,sst*100.,featbar,colors=featcolors,extend='both')
+    print('line 243 IAP',sstdate, sst.shape, sstlon.shape, sstlat.shape)
+    fig1, ax1 = plt.subplots(1,figsize=figsize)
+    ax1 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
+    gl = ax1.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45))
+    kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
+   
     if pice:
-        icexx,iceyy=fieldCoords(field='ice')
-        icexx,iceyy=rotField(icexx,iceyy,rot)
-        icedata=np.loadtxt('Satellite_Fields/NSIDC_ICE/north/'+stryest+'.txt')
+        # if not os.path.exists(f'/Volumes/GoogleDrive/My Drive/UpTempO/NSIDC_ICE/{year}/SST-{stryest}.dat'):
+        try:
+            icedate,ice,icexx,iceyy = pfields.getICE(strdate=strdate,nors='n')
+            print(icedate,ice.shape)
+        except:
+            print('ICE IS NOT UPDATING')
+            print('NOT PLOTTING ICE, want to plot older ice?')
+                
+        # icexx,iceyy=fieldCoords(field='ice')
+        # icexx,iceyy=rotField(icexx,iceyy,rot)
+        # icedata=np.loadtxt('Satellite_Fields/NSIDC_ICE/north/'+stryest+'.txt')
         icelevels=[0.15,0.30,0.45,0.60,0.75,0.90,1.0]
         if cdomain == 'UpTempO':
-            ucolors=['0.4','0.5','0.7','0.75','0.8','1.0']
-            icelevels=[0.15,0.2,0.3,0.4,0.5,0.75,1.0]
-            icec=plt.contourf(icexx,iceyy,icedata,icelevels,colors=ucolors,vmax=.9)
-
+            ax1.add_feature(cartopy.feature.LAND)
+            ax1.coastlines(resolution='110m',linewidth=0.5)
+            ax1.set_extent([-180,180,70,90],crs=ccrs.PlateCarree())
+            
+            
+            ax1.text(-45,79.5,'80N',transform=ccrs.PlateCarree(),fontsize=8)
+            ax1.text(-45,69.5,'70N',transform=ccrs.PlateCarree(),fontsize=8)
+            ch = ax1.imshow(ice, vmin=0, vmax=100, cmap=plt.cm.Blues,  #extent=extent, 
+                       transform=ccrs.Stereographic(**kw))
+            
             #ucmap.set_over('white')
         else:
             ucmap=cmocean.cm.ice
             ucmap.set_over('azure')
-            icec=plt.contourf(icexx,iceyy,icedata,icelevels,vmax=.9,cmap=ucmap)
+            icec=plt.contourf(icexx,iceyy,ice,icelevels,vmax=.9,cmap=ucmap)
         
     plt.axis('off')
 

@@ -33,7 +33,6 @@ def upupData():
             
         fname=datpath.split('/')[-1]
         opdat.write(datpath+' WebDATA/'+fname+'\n')
-        print('line 36',fname)
 
     if newdead:
         for nd in newdead:
@@ -48,20 +47,19 @@ def upupData():
             
             
 def upupPlots():
-    nopresbids=['300534062158460','300534062158480']
-    nosalibids=['300534060051570','300534060251600','300534060649670','300234068519450']
-    curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
-    for c in curbuoys:
-        uplots.TimeSeriesPlots(bid=c)
-        if c not in nopresbids:
-            uplots.TimeSeriesPlots(bid=c,quan='Pressure')
-        if c not in nosalibids:
-            uplots.TimeSeriesPlots(bid=c,quan='Salinity')
-        uplots.VelocitySeries(c)
-        uplots.Batt_Sub(c)
-##        uplots.TrackMaps(c)
-
-##    uplots.OverviewMap()
+    # nopresbids=['300534062158460','300534062158480']
+    # nosalibids=['300534060051570','300534060251600','300534060649670','300234068519450']
+    # curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
+    # for c in curbuoys:
+    #     uplots.TimeSeriesPlots(bid=c)
+    #     if c not in nopresbids:
+    #         uplots.TimeSeriesPlots(bid=c,quan='Pressure')
+    #     if c not in nosalibids:
+    #         uplots.TimeSeriesPlots(bid=c,quan='Salinity')
+    #     uplots.VelocitySeries(c)
+    #     uplots.Batt_Sub(c)
+    #     uplots.TrackMaps(c)
+    uplots.OverviewMap()
         
 
 def upupGo():
