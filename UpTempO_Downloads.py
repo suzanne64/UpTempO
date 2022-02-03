@@ -18,21 +18,21 @@ def userCred(user):
     psswd={'WB_Ermold':'warmbuoy','pscapluw':'microstar'}
     return psswd[user]
 
-def getPG(bid,user,daysago=50):
+# def getPG(bid,user,daysago=50):
+def getPG(bid,user,startdate):
     #user = 'WB_Ermold' or 'pscapluw'
     psswd=userCred(user)
 
     today=datetime.datetime.now()
     enddate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
 
-    xdaysago,fdoy=BT.xDaysAgo(daysago)
-    startdate="%.2d/%.2d/%d" % (xdaysago.month,xdaysago.day,xdaysago.year)
-    
-    
+    # xdaysago,fdoy=BT.xDaysAgo(daysago)
+    # startdate="%.2d/%.2d/%d" % (xdaysago.month,xdaysago.day,xdaysago.year)
+       
     strcommand='http://api.pacificgyre.com/api2/getData.aspx?userName='
     strcommand+=user+'&password='+psswd+'&startDate='+startdate
     strcommand+='&endDate='+enddate+'&commIDs='+bid+'&fileFormat=CSV'
-    
+
     fid=urllib.request.urlopen(strcommand)
     data=fid.read()
     fid.close()

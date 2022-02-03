@@ -61,8 +61,8 @@ def BuoyMaster(bid):
                              'vessel':'SIZRS',
                              'brand':'Pacific Gyre',
                              'pgname':'UW-IB-SVPS-0001',
-                             'tdepths':[0,0.22],
-                             'sdepths':[0.22],
+                             'tdepths':[0,0.28],  # changed from 0.22 2/2/2022
+                             'sdepths':[0.28],
                              'vbatt_ind':1,
                              'sub_ind':1},
                              
@@ -76,8 +76,8 @@ def BuoyMaster(bid):
                              'vessel':'SIZRS',
                              'brand':'Pacific Gyre',
                              'pgname':'UW-IB-SVPS-0002',
-                             'tdepths':[0,0.22],
-                             'sdepths':[0.22],
+                             'tdepths':[0,0.28],  # changed from 0.22 2/2/2022
+                             'sdepths':[0.28],
                              'vbatt_ind':1,
                              'sub_ind':1},
                             
@@ -122,10 +122,10 @@ def BuoyMaster(bid):
                              'vessel':'SIZRS',
                              'brand':'Pacific Gyre',
                              'pgname':'UW-TC-S9C-0001',
-                             'ddepths':[5.,10.,20.,25.],
-                             'CTDSs':[5.,10.,20.],
+                             'pdepths':[5.,10.,20.,25.],  # changed from ddepths 2/1/2022
+                             'CTDSs':[5.,10.,20.],   # sal readings at 5, 10, 20m
                              'tdepths':[0.0,2.5, 5., 7.5, 10., 15., 20., 25.],
-                             'csdepths':[10.,20.],
+                             # 'csdepths':[10.,20.],   # depth readings at 10 and 20 only, commented out 2/1/2022
                              'vbatt_ind':1,
                              'bp_ind':1,
                              'sub_ind':1},

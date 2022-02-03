@@ -559,6 +559,7 @@ def OverviewMap(strdate=None):
 #     plt=PF.laloLines(plt,0,lats=[50.,60.,70.,75.,80.,85.])
     ax = aplots.UpTempOArcticMap()
 
+    # plot latest locations of each buoy we are currently following 
     curbuoys,deadbuoys,orderbuoys,deadbuoys=BM.getBuoys()
     for c in curbuoys:
         opf=open('UPTEMPO/Processed_Data/'+c+'.dat','r')

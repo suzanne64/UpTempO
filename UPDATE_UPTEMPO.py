@@ -19,11 +19,15 @@ def upupData():
 
     #---- Update Data ----
     for r in reporting:  # reporting is a dict, keys are buoy ID
+        # if '300534062158460' in r:
+
         source,user=reporting[r][3].split(':')
         if source == 'PG':
             print('getting '+r+' from PG:'+user)
-            upd.getPG(r,user)
+            # upd.getPG(r,user)
+            upd.getPG(r,user,reporting[r][2])
             upp.processPG(r)
+            # exit(-1)
             datpath, latestupdate = upp.WebFormat(r)
         if source == 'ARGOS':
             print('getting '+r+' from ARGOS:'+user)
@@ -67,8 +71,8 @@ def upupGo():
     upy.UploadToPSC()
         
 if __name__=='__main__':
-    # upupData()
-    upupPlots()
+    upupData()
+    # upupPlots()
     # upupGo()
 
 

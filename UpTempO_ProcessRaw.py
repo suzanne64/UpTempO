@@ -7,12 +7,15 @@ import BuoyTools_py3_toot as BT
 import UpTempO_BuoyMaster as BM
 import UpTempO_HeaderCodes as HC
 import UpTempO_Python as upy
+import numpy as np
 
 
 def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
 
-
     binf=BM.BuoyMaster(bid)
+    if bid == '300534062158480' or bid == '300534062158460':
+        binf['tdepths'] = [binf['tdepths'][-1]]  # all the data in Temperature0cm col are null, col has been removed
+
     #find variables to look for
     fvars=['Dates','Lat','Lon']
     if 'pdepths' in binf:
@@ -94,6 +97,9 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
     for d in data:
         if ',' in d: sd=d.split(',')
         else: sd=d.split(';')
+        # print(sd[0])
+        # print('line 97 in processDATA')
+        # exit(-1)
 
         try:
             cdate=sd[hinf['Date']]
@@ -120,9 +126,10 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
         else: its = -1
 
         outline=[cyear,cmonth,cday,chour,clat,clon]
+
         for f in fvars[3:]:
             if sd[hinf[f]]:
-                if ('P' in f) and (f != 'BP'):
+                if f.startswith('P'): # in f) and (f != 'BP'):
                     fp=float(sd[hinf[f]])
                     if pmod == 'PG': fp=fp*.1
                     if pmod == 'MY':
@@ -130,6 +137,10 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
                         fp=MY_OP_Correction(fp,cbp)
                     pout="%.3f" % fp
                     outline.append(pout)
+                elif f.startswith('D'):
+                    fp=float(sd[hinf[f]])
+                    pout="%.3f" % fp
+                    outline.append(pout)                    
                 else: outline.append(sd[hinf[f]])
             else: outline.append('-999')
 
@@ -139,7 +150,7 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
     outhead='Year;Month;Day;Hour;Lat;Lon;'
     jvars=';'.join(fvars[3:])
     outhead+=jvars
-    
+
     opw=open('UPTEMPO/LastUpdate/'+bid+'.dat','w')
     opw.write(outhead+'\n')
     for s in sto: opw.write(s+'\n')
@@ -179,23 +190,63 @@ def processPG(bid):
     data=data.replace('"','')
     data=data.split('\n')[0:-1]
     header=data[0].split(',')
-    data=data[1:]
-    data=[da for da in data if da]
+    # print(header)
+    # print(len(header))
+    data=data[1:]  # all but header line
+    data=[da for da in data if da]  # what does this do?
 
-    hinf=HC.PG_HeaderCodes(header)
+    # if column is all null, remove
+    dataspl=[]
+    for da in data:
+        dataspl.append(da.split(','))
+    for ii in range(len(header)):
+        colii = [da[ii] for da in dataspl]
+        if all(not item for item in colii):
+            iiempty = ii
+    del header[iiempty]
+    # put back in same format for processDATA
+    data=[]
+    for ii,da in enumerate(dataspl):
+        del da[iiempty]
+        data.append(','.join(da))
+        
+    hinf=HC.PG_HeaderCodes(header) 
+    print('line 218 in processPG',hinf)
     binf=BM.BuoyMaster(bid)
     
     processDATA(bid,header,data,hinf)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1     
                                        #pmod=0.1 by default (value to multiply Ocean Pressure by)
-    appendProcessed(bid,order=-1)
+    # LastUpdate bid.dat file now contains all the data (not just data since last update)                                
+    opr=open('UPTEMPO/LastUpdate/'+bid+'.dat','r')
+    data=opr.read()
+    opr.close()
+    data=data.replace(';',' ')
+    data=data.split('\n')
+    data=[da for da in data if da]
+                                       
+    have=[data[0]]            # header
+    order = -1
+    if order == -1:
+        nd=len(data)
+        for i in range(nd):
+            if data[nd-1-i] not in have: have.append(data[nd-1-i])
+    else:
+        for d in data:
+            if d not in have: have.append(d)
+
+    opw=open('UPTEMPO/Processed_Data/'+bid+'.dat','w')
+    for h in have: opw.write(h+'\n')
+    opw.close()
+                         
+    # appendProcessed(bid,order=-1)
     #WebFormat(bid)
     
 
         
 def appendProcessed(bid,order=-1,fts=1):
     #fts = look for Ts data (1) or not (0)
-    #order = new data is in order(1) or new data is in reverse order(-1)
+    #order = new data is in chronological order(1) or new data is in reverse order(-1)
     #ARGOS: fts=0, order=1
     #PG: fts=1, order=-1
     
@@ -242,7 +293,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
 
     # get info and make proper header
     wmo=BT.lookupWMO(bid)
-    binf=BM.BuoyMaster(bid)
+    binf=BM.BuoyMaster(bid)  # contains specific buoy info in 'buoy cards'
     binfn1="%.2d" % int(binf['name'][1])
 
     # depDate="%.2d/%.2d/%d" % (int(depline[1]),int(depline[2]),int(depline[0]))
@@ -262,7 +313,17 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     deplon="%.2f" % fdeplon
     depll=deplat+nors+' '+deplon+eorw
 
-    opf=open('UPTEMPO/LastUpdate/'+bid+'.dat','r')
+    # opf=open('UPTEMPO/LastUpdate/'+bid+'.dat','r')
+    # data=opf.read()
+    # opf.close()
+    # data=data.replace(';',' ')
+    # data=data.split('\n')
+    # data=[da for da in data if da]
+    # header=data[0]
+    # data=data[1:]
+    # nd=len(data)
+    
+    opf = open('UPTEMPO/Processed_Data/'+bid+'.dat','r')
     data=opf.read()
     opf.close()
     data=data.replace(';',' ')
@@ -270,27 +331,29 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     data=[da for da in data if da]
     header=data[0]
     data=data[1:]
-    nd=len(data)
+    # nd=len(data)
 
     shead=header.split(' ')
-
+    print('shead',shead)
 
     fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel']+'-Last.dat'
-
+    print(fname)
     today=datetime.datetime.now()
     lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
+    lastline=data[-1].split(' ')
+    dolt="%.2d/%.2d/%d" % (int(lastline[1]),int(lastline[2]),int(lastline[0]))
     
-    if nd>0:
-        if order == -1:
-            rdata=[]
-            for r in range(nd):
-                rdata.append(data[nd-1-r])
-            data=rdata
+    # if nd>0:
+    #     if order == -1:
+    #         rdata=[]
+    #         for r in range(nd):
+    #             rdata.append(data[nd-1-r])
+    #         data=rdata
     
-            lastline=data[-1].split(' ')
-            dolt="%.2d/%.2d/%d" % (int(lastline[1]),int(lastline[2]),int(lastline[0]))
-    else:
-        dolt=lastUpdate
+    #         lastline=data[-1].split(' ')
+    #         dolt="%.2d/%.2d/%d" % (int(lastline[1]),int(lastline[2]),int(lastline[0]))
+    # else:
+    #     dolt=lastUpdate
     
     webhead=['%UpTempO '+binf['name'][0]+' #'+binfn1,
           '%Iridium ID: '+bid,
@@ -309,7 +372,9 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
           '% 5 = Longitude (E)']
     
     # remake  columns
-    tdepths=binf['tdepths']; #print(tdepths)
+    if bid == '300534062158460' or bid == '300534062158480':
+        binf['tdepths'] = [binf['tdepths'][-1]]   # all the data in Temperature0cm col are null, col has been removed
+    tdepths=binf['tdepths']; 
     eddepths=binf['tdepths'].copy()
      
     if 'pdepths' in binf: pdepths=binf['pdepths']; #print(pdepths)
@@ -317,7 +382,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']; #print(CTDSs_depths)
     if 'sdepths' in binf: sdepths=binf['sdepths']; #print(sdepths)
 
-    shead=header.split(' ')[6:]
+    shead=header.split(' ')[6:]  # only work on the data columns
     col=6
 
     for h in shead:
@@ -376,31 +441,35 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         webhead.append(lineout)
 
     webhead.append('%END')
+
+    # opw=open('UPTEMPO/Processed_Data/'+bid+'.dat','w')
+    # for h in have: opw.write(h+'\n')
+    # opw.close()
     
-    if os.path.isfile('UPTEMPO/WebData/'+fname):
-        opweb=open('UPTEMPO/WebData/'+fname,'r')
-        have=opweb.read()
-        opweb.close()
-        have=have.split('\n')
-        have=[ha for ha in have if ha]
-        header=[ha for ha in webhead]
-        hdata=[ha for ha in have if '%' not in ha]
+    # if os.path.isfile('UPTEMPO/WebData/'+fname):
+    #     opweb=open('UPTEMPO/WebData/'+fname,'r')
+    #     have=opweb.read()
+    #     opweb.close()
+    #     have=have.split('\n')
+    #     have=[ha for ha in have if ha]
+    #     header=[ha for ha in webhead]
+    #     hdata=[ha for ha in have if '%' not in ha]
 
-        for d in data:
-            if d not in hdata: hdata.append(d)
+    #     for d in data:
+    #         if d not in hdata: hdata.append(d)
 
-        opw=open('UPTEMPO/WebData/'+fname,'w')
-        for h in header: opw.write(h+'\n')
-        for hd in hdata: opw.write(hd+'\n')
-        opw.close()
-    else:
-        # depline=data[0].split(' ')
+    #     opw=open('UPTEMPO/WebData/'+fname,'w')
+    #     for h in header: opw.write(h+'\n')
+    #     for hd in hdata: opw.write(hd+'\n')
+    #     opw.close()
+    # else:
+    #     # depline=data[0].split(' ')
 
 
-        opw=open('UPTEMPO/WebData/'+fname,'w')
-        for w in webhead: opw.write(w+'\n')
-        for d in data: opw.write(d+'\n')
-        opw.close()
+    opw=open('UPTEMPO/WebData/'+fname,'w')
+    for w in webhead: opw.write(w+'\n')
+    for d in data: opw.write(d+'\n')
+    opw.close()
 
     strtoday="%d%.2d%.2d" % (today.year,today.month,today.day)
     if newdead: newfname=fname.replace('Last','FINAL')
