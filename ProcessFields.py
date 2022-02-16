@@ -34,7 +34,7 @@ def getICE(strdate='default',nors='n'):
             ice, icexx, iceyy = None, None, None
             break
         
-        # nsidc_download_0081_v02(strdate,nors)
+        nsidc_download_0081_v02(strdate,nors)
         icepath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/NSIDC_ICE/{regdict[nors]}/{strdate[:4]}'
         icefile = f'NSIDC0081_SEAICE_PS_{nors.capitalize()}25km_{strdate}_v2.0.nc'
         if os.path.exists(f'{icepath}/{icefile}'):  
@@ -44,6 +44,9 @@ def getICE(strdate='default',nors='n'):
             # print(ncdata['F18_ICECON'].shape)
             ice=np.squeeze(ncdata['F18_ICECON'])  # np.squeeze converts nc dataset to np array
             ice[ice==251] = 1.  # fill pole_hole_mask, flags are not scaled
+            ice[ice==254] = np.nan  # land
+            ice[ice==253] = np.nan  # coast
+            ice[ice==0] = np.nan  # no ice
             y=ncdata['y'][:]
             x=ncdata['x'][:]
             icexx, iceyy = np.meshgrid(x,y)    

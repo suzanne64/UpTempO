@@ -97,9 +97,6 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
     for d in data:
         if ',' in d: sd=d.split(',')
         else: sd=d.split(';')
-        # print(sd[0])
-        # print('line 97 in processDATA')
-        # exit(-1)
 
         try:
             cdate=sd[hinf['Date']]
@@ -131,7 +128,7 @@ def processDATA(bid,header,data,hinf,fts=1,pmod='PG'):
             if sd[hinf[f]]:
                 if f.startswith('P'): # in f) and (f != 'BP'):
                     fp=float(sd[hinf[f]])
-                    if pmod == 'PG': fp=fp*.1
+                    if pmod == 'PG' and bid != '300534060649670': fp=fp*.1  # 300534060649670 already comes in dB
                     if pmod == 'MY':
                         cbp=float(sd[hinf['BP']])
                         fp=MY_OP_Correction(fp,cbp)
@@ -190,30 +187,44 @@ def processPG(bid):
     data=data.replace('"','')
     data=data.split('\n')[0:-1]
     header=data[0].split(',')
-    # print(header)
-    # print(len(header))
+
+    # if DepthPods in header and NO PressurePods, change names to PressurePods,
+    #  because the measurements are indeed pressure. 2/4/2021 sd
+    #  BUT they are already dB, don't need to /10, in processDATA above
+    depthstring = any('DepthPod' in item for item in header)
+    pressstring = any('PressurePod' in item for item in header)
+    if depthstring and not pressstring:
+        header = [h.replace('Depth','Pressure') for h in header]
+        # re-number PressurePods 1 through end
+        n=1
+        for ii,h in enumerate(header):
+            if h.startswith('PressurePod'):
+              header[ii]=f'{h[:-1]}{n}'
+              n += 1
+
     data=data[1:]  # all but header line
     data=[da for da in data if da]  # what does this do?
 
     # if column is all null, remove
     dataspl=[]
+    iiempty = None
     for da in data:
         dataspl.append(da.split(','))
     for ii in range(len(header)):
         colii = [da[ii] for da in dataspl]
         if all(not item for item in colii):
             iiempty = ii
-    del header[iiempty]
-    # put back in same format for processDATA
-    data=[]
-    for ii,da in enumerate(dataspl):
-        del da[iiempty]
-        data.append(','.join(da))
+    if iiempty:
+        del header[iiempty]
+        # put back in same format for processDATA
+        data=[]
+        for ii,da in enumerate(dataspl):
+            del da[iiempty]
+            data.append(','.join(da))
         
     hinf=HC.PG_HeaderCodes(header) 
-    print('line 218 in processPG',hinf)
     binf=BM.BuoyMaster(bid)
-    
+        
     processDATA(bid,header,data,hinf)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1     
                                        #pmod=0.1 by default (value to multiply Ocean Pressure by)
@@ -334,10 +345,9 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     # nd=len(data)
 
     shead=header.split(' ')
-    print('shead',shead)
 
     fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel']+'-Last.dat'
-    print(fname)
+
     today=datetime.datetime.now()
     lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
     lastline=data[-1].split(' ')
@@ -377,10 +387,10 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     tdepths=binf['tdepths']; 
     eddepths=binf['tdepths'].copy()
      
-    if 'pdepths' in binf: pdepths=binf['pdepths']; #print(pdepths)
-    if 'ddepths' in binf: ddepths=binf['ddepths']; #print(ddepths)
-    if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']; #print(CTDSs_depths)
-    if 'sdepths' in binf: sdepths=binf['sdepths']; #print(sdepths)
+    if 'pdepths' in binf: pdepths=binf['pdepths']; 
+    if 'ddepths' in binf: ddepths=binf['ddepths']; 
+    if 'CTDSs' in binf: CTDSs_depths=binf['CTDSs']; 
+    if 'sdepths' in binf: sdepths=binf['sdepths']; 
 
     shead=header.split(' ')[6:]  # only work on the data columns
     col=6

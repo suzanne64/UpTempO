@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import datetime as dt
 from matplotlib.dates import (MONTHLY,DateFormatter,rrulewrapper,RRuleLocator,drange)
 import cartopy.crs as ccrs
-
+import re
 
 
 def TimeSeriesPlots(bid,quan='Temp'):
@@ -59,16 +59,18 @@ def TimeSeriesPlots(bid,quan='Temp'):
     
     if quan == 'Temp':
         depths=binf['tdepths']
-        ind1=header.index('T1')
+        if bid=='300534062158480' or bid=='300534062158460':
+            depths=[0.28]  # all data at depth=0 are null.
+        ind1=[header.index(item) for item in header if item.startswith('T')]
         yaxlab='Temperature (C)'
         if bid == '300234061160500': ax.set_ylim(-2.0,2.0)
         else: ax.set_ylim(-2.0,10.0)
 
     if quan == 'Salinity':
         depths=binf['sdepths']
-        ind1=header.index('S1')
+        ind1=[header.index(item) for item in header if (item.startswith('CTD-S') or item.startswith('S')) and not item.startswith('SUB')]
         yaxlab='Salinity'
-        ax.set_ylim(25,40)
+        ax.set_ylim(20,40)
         # if bid == '300234061160500': ax.set_ylim(-2.0,2.0)
         # else: ax.set_ylim(-2.0,10.0)
 
@@ -97,7 +99,10 @@ def TimeSeriesPlots(bid,quan='Temp'):
 
     if havepressures:  
         nt=len(depths)
-        vals=data[:,ind1:ind1+nt]
+        if quan=='Pressure':
+            vals=data[:,ind1:ind1+nt]
+        else:
+            vals=data[:,ind1]
         
         if quan == 'Pressure':
             secax=ax.twinx()
@@ -107,12 +112,14 @@ def TimeSeriesPlots(bid,quan='Temp'):
             slp=data[:,islp]
             slp[slp <= 940] =np.nan
             secax.xaxis.set_major_formatter(formatter)
+            secax.xaxis.set_major_locator(formatter)
             secax.plot_date(dateobjs,data[:,islp],color='r',alpha=0.5)
+            # secax.set_ticks()
 
         for t in range(nt):
             cvals=vals[:,t]
             ax.plot_date(dateobjs,cvals,'-o',color=cols[t],ms=1)
-
+            
 
     datelab=" %.2d/%.2d/%d to %.2d/%.2d/%d" % (dateobjs[0].month,dateobjs[0].day,dateobjs[0].year,dateobjs[-1].month,dateobjs[-1].day,dateobjs[-1].year)
     plt.title(buoylab+' ('+bid+') '+yaxlab+' Time Series: '+datelab,fontsize=20)

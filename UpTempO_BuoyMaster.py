@@ -122,8 +122,9 @@ def BuoyMaster(bid):
                              'vessel':'SIZRS',
                              'brand':'Pacific Gyre',
                              'pgname':'UW-TC-S9C-0001',
-                             'pdepths':[5.,10.,20.,25.],  # changed from ddepths 2/1/2022
+                             'pdepths':[5.,10.,20.,25.],  # Called DepthPodx, changed from ddepths 2/1/2022
                              'CTDSs':[5.,10.,20.],   # sal readings at 5, 10, 20m
+                             'sdepths':[5.,10.,20.],   # sal readings at 5, 10, 20m
                              'tdepths':[0.0,2.5, 5., 7.5, 10., 15., 20., 25.],
                              # 'csdepths':[10.,20.],   # depth readings at 10 and 20 only, commented out 2/1/2022
                              'vbatt_ind':1,
@@ -191,24 +192,7 @@ def BuoyMaster(bid):
                            'vbatt_ind':25,
                            'sub_ind':26},
 			
-			
-	'300234067936870':{'notes':'WARM 2019 W9',
-                           'name':['2019','W-9'],
-                           'brand':'Pacific Gyre',
-                           'imeiabbv':'6870',
-                           'vessel':'WARM',
-                           'pdepths':10.,
-                           'tdepths':[0.0,4.3,10.],
-                           'T1_ind':7,
-                           'P1_ind':6,
-                           'vbatt_ind':10,
-                           #****BIOSENSOR INFO****
-                           'biosensors':['LI_192_0','LI_192_1','LI_192_2','LI_192_3','LI_192_4','LI_192_5','Cyclops_CHL'],
-                           'biodepths':[0.0, 0.5, 1.0, 4.1, 6.4, 8.0, 4.7],
-                           #----for "plot_warm" in webplots---
-                           'lidepths':[0.0, 0.5, 1.0, 4.1, 6.4, 8.0]},    
-				
-				
+							
 	'300234068719480':{'inote':'Deployed 9/12/2019 via SIZRS by Mike',
                            'notes':'UpTempO 2019 #3',
                            'name':['2019','3'],
@@ -258,8 +242,50 @@ def BuoyMaster(bid):
 				'P1_ind':6,
 				'bp_ind':22,
 				'vbatt_ind':23,
-				'sub_ind':24}
+				'sub_ind':24},
 
+	'300234067936870':{'notes':'WARM 2019 W9',
+                           'name':['2019','W-9'],
+                           'brand':'Pacific Gyre',
+                           'imeiabbv':'6870',
+                           'vessel':'WARM',
+                           'pdepths':10.,
+                           'tdepths':[0.0,4.3,10.],
+                           'T1_ind':7,
+                           'P1_ind':6,
+                           'vbatt_ind':10,
+                           #****BIOSENSOR INFO****
+                           'biosensors':['LI_192_0','LI_192_1','LI_192_2','LI_192_3','LI_192_4','LI_192_5','Cyclops_CHL'],
+                           'biodepths':[0.0, 0.5, 1.0, 4.1, 6.4, 8.0, 4.7],
+                           #----for "plot_warm" in webplots---
+                           'lidepths':[0.0, 0.5, 1.0, 4.1, 6.4, 8.0]},
+    
+    '300234064735100':{'notes':'used to be UpTempO 2017 #6... was returned',
+                           'name':['2018','2'],
+			               'brand':'Pacific Gyre',
+                           'imeiabbv':'5100',
+                           'vessel':'SIZRS',
+                           'pdepths':[20.,40.,60.],
+                           'tdepths':[0.0,2.5,5.0,7.5,10.,15.,20.,25.,30.,35.,40.,50.,60.],
+                           'T1_ind':9,
+                           'P1_ind':6,
+                           'bp_ind':22,
+                           'vbatt_ind':23,
+                           'sub_ind':24},		
+
+#     '300234064735100':{'notes':'JWARM 2018 #1',
+#                            'name':['2018','JW-1'],
+# 			               'brand':'Pacific Gyre',
+#                            'imeiabbv':'2490',
+#                            'vessel':'ICEX',
+#                            'pdepths':[20.,40.,60.],
+#                            'tdepths':[0.0,2.5,5.0,7.5,10.,15.,20.,25.,30.,35.,40.,50.,60.],
+#                            'T1_ind':9,
+#                            'P1_ind':6,
+#                            'bp_ind':22,
+#                            'vbatt_ind':23,
+#                            'sub_ind':24},				
+		
           }
     
     binf=bids[bid]
