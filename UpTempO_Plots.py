@@ -13,6 +13,7 @@ from matplotlib.dates import (MONTHLY,DateFormatter,rrulewrapper,RRuleLocator,dr
 import cartopy.crs as ccrs
 import re
 import pandas as pd
+from scipy import stats
 
 
 def TimeSeriesPlots(bid,quan='Temp'):
@@ -612,33 +613,58 @@ def OverviewMap(strdate=None):
     outwrite='UPTEMPO/WebPlots/PositionsMap.'+strdate+'.png PositionMaps/PositionsMap.'+strdate+'.png'
     transferList(outwrite)        
                    
-def PrevOverviewMap(strdate):
+def PrevOverviewMap(strdate=None):
     
-    objdate = dt.datetime.strptime(strdate,'%Y%m%d')
-    buoysdate = objdate + dt.timedelta(days=1)
-    print('buoys date',buoysdate.year)
-    
+    if strdate == None:
+        objdate = dt.datetime.now() - dt.timedelta(days=1)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    else:
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d')
+
+    # objdate = dt.datetime.strptime(strdate,'%Y%m%d')
+    buoysdate = objdate # + dt.timedelta(days=1)
+    print('buoys date',buoysdate)
+
     ax = aplots.UpTempOArcticMap(strdate)
-    # get average locations of each buoy we are currently following on buoysdate
+    shapes = {2019:'o', 2020:'s',2021:'d'}
+    # newline = '\n'
+    # get last locations of each buoy we are currently following on buoysdate
     curbuoys,deadbuoys,orderbuoys,deadbuoys=BM.getBuoys()
-    for c in curbuoys:
+    for ii,c in enumerate(curbuoys):
         binf=BM.BuoyMaster(c)
-        # if c=='300234068519450':
         df = pd.read_csv(f'UPTEMPO/Processed_Data/{c}.dat',sep=' ',header=0)
         if ((df['Year']==buoysdate.year) & (df['Month']==buoysdate.month) & (df['Day']==buoysdate.day)).any():
-            clat = df['Lat'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month) & (df['Day']==buoysdate.day)].mean()
-            clon = df['Lon'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month) & (df['Day']==buoysdate.day)].mean()
-            blab=f"{binf['name'][0]}-{binf['name'][1]} {buoysdate.month}/{buoysdate.day}/{buoysdate.year}"
-        else:
-            clon = df['Lon'].iloc[-1]
-            clat = df['Lat'].iloc[-1]
-            blab=f"{binf['name'][0]}-{binf['name'][1]} {df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]}"
-        
-        ax.plot(clon,clat,'ok',ms=10,transform=ccrs.PlateCarree())
-        ax.text(clon,clat,blab,fontsize=12, color='k', fontweight='bold',transform=ccrs.PlateCarree())
-    # plt.show()
-    
+            clat = df['Lat'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month)].iloc[-1]  #  & (df['Day']==buoysdate.day)
+            clon = df['Lon'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month)].iloc[-1]  #  & (df['Day']==buoysdate.day)
+            # some longitudes are wacky. Don't consider them in the day's mean, actually taking last is better
+            # dayLon = df['Lon'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month) & (df['Day']==buoysdate.day)]
+            # goodLon = np.abs(stats.zscore(dayLon))< 3
+            # clon = dayLon[goodLon].mean()
+            # clon = df['Lon'][(df['Year']==buoysdate.year) & (df['Month']==buoysdate.month) & (df['Day']==buoysdate.day)].mean()
+            # blab=f"{binf['name'][0]}-{binf['name'][1]}{newline}{buoysdate.strftime(strformat)}"
+            blab=f"#{binf['name'][1]}" #{buoysdate.strftime(strformat)}"
+        # else:
+        #     clon = df['Lon'].iloc[-1]
+        #     clat = df['Lat'].iloc[-1]
+        #     # blab=f"{binf['name'][0]}-{binf['name'][1]}{newline}{df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
+        #     blab=f"{binf['name'][0]}-{binf['name'][1]} {df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
+
+            ax.plot(clon,clat,marker=shapes[df['Year'].iloc[0]],color='k',ms=10,
+                    transform=ccrs.PlateCarree())
+            ax.text(clon-(2*np.cos(clat)*np.pi/180),clat-0.5,blab,fontsize=12, color='k', fontweight='bold',transform=ccrs.PlateCarree())
+
+    for key in shapes.keys():
+        ax.scatter(0,0,10,marker=shapes[key],color='k',transform=ccrs.PlateCarree(),label=key)
+    ax.legend(markerscale=2.5) #,title='UpTempO')
+
+    plt.savefig('UPTEMPO/WebPlots/CurrentPositionsMap.png',bbox_inches='tight')
     plt.savefig('UPTEMPO/WebPlots/PositionsMap.'+strdate+'.png',bbox_inches='tight')
+
+    outwrite='UPTEMPO/WebPlots/PositionsMap.'+strdate+'.png PositionMaps/PositionsMap.'+strdate+'.png'
+    print(outwrite)
+    transferList(outwrite)        
+    
+    # plt.show()
                    
     
 def transferList(writ):

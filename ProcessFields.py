@@ -307,11 +307,11 @@ def getSST(strdate='default'):
     theurl=('https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/'+year+month+'/'+thefile)
     
     ncpath=f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/sstNOAA/{year}/{thefile}'
-    
-    if not os.path.exists(theurl):
-        theurl = theurl.replace('_preliminary','')  
 
-    #----download yesterday's data, or go back one day at a time for one week to get data
+    # if not os.path.exists(theurl):
+    #     theurl = theurl.replace('_preliminary','')  
+
+   #----download yesterday's data, or go back one day at a time for one week to get data
     noFile = True
     numDaysBack = 0
     while noFile: 
