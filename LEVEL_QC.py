@@ -8,11 +8,14 @@ Created on Fri Feb 11 15:48:43 2022
 import re, sys, os
 import numpy as np
 import pandas as pd
-from scipy import interpolate
+from scipy import interpolate, stats, signal
 from collections import deque
 import itertools
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.widgets import Cursor
+
 from matplotlib.widgets import Button
 from matplotlib.text import Annotation
 from mpl_point_clicker import clicker
@@ -28,15 +31,13 @@ from scipy.signal import medfilt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import datetime as dt
-from waterIce import getL1, getL2, plotL1vL2, getOPbias, getBuoyIce, getRidging
+from waterIce import getL1, getL2, plotL1vL2, getOPbias, getBuoyIce, getRidging, getRidgeDates
 # from waterIce import * 
 
 log = 0
 
-cList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+cList=['k','purple','blue','deepskyblue','cyan','limegreen','darkorange','red'] #'lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
-# level1Path = '/Volumes/GoogleDrive/My Drive/UpTempO/UPTEMPO/WebData/LEVEL1'
-# level2Path = '/Volumes/GoogleDrive/My Drive/UpTempO/UPTEMPO/WebData/LEVEL2'
 L1path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL1'
 L2path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL2'
 figspath = '/Users/suzanne/Google Drive/UpTempO/level2/figs'
@@ -55,6 +56,21 @@ if log:
 # prepend a 0m to pdepths
 pdepths = list(itertools.chain.from_iterable([[0],binf['pdepths']]))
 tdepths = binf['tdepths']
+
+# readCSV = input('Do you want to read in ridgePressure .csv now? : y for yes, n for no ')
+# ridgedPresFile = f'/Users/suzanne/Google Drive/UpTempO/level2/ridgedPressure{binf["name"][0]}-{int(binf["name"][1]):02d}.csv'
+# print(ridgedPresFile)
+# df1a = pd.read_csv(ridgedPresFile)
+# print(df1a.columns)
+# fig4,ax4 = plt.subplots(1,1,figsize=(15,6))
+# ax4.plot(df1a['Dates'],-1*df1a['P1corr'],'b.')
+# ax4.plot(df1a['Dates'],df1a['ridgedPressure'],'r.-')
+# ax4.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+# ax4.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+# ax4.set_yticks(np.arange(np.floor(-1*df1a['P1corr'].max()),np.ceil(-1*df1a['P1corr'].min()),0.1))
+# ax4.set_title('manually edited Ridged Pressures (r)')
+# plt.show()    
+# exit(-1)
 
 level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"]}-FINAL.dat'
 level2File = f'{L2path}/UTO_{binf["name"][0]}-{int(binf["name"][1]):02d}_{bid}_L2.dat'
@@ -81,28 +97,9 @@ print(Dcols)
 print(Tcols)
 print(Pcols[1:])
 print('Pcolscorr',Pcolscorr)
-# print(Tcols[5])
-# print(df1.loc[:,Tcols[5]])
+print('pdepths',pdepths)
+print(df1.columns)
 # exit(-1)
-# # plot Level 1 temperature data
-# fig7,ax7 = plt.subplots(1,1,figsize=(15,5))
-# for ii,tcol in enumerate(Tcols):
-#     ax7.plot(df1['Dates'],df1[tcol],label=f'{tdepths[ii]}')
-# ax7.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-# ax7.grid()
-# ax7.legend()
-# ax7.set_title(f'Level 1 Temperature data from buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
-# plt.savefig(f'{figspath}/TemperaturesL1_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
-# plt.show()
-# exit(-1)
-# plotL1vL2(df1,df2,bid)
-# fig1,ax1 = plt.subplots(1,1)
-# ax1.plot(-1*df2[Dcols].iloc[0],'*-')
-# ax1.grid()s
-# plt.show()
-# exit(-1)
-# remove 'out of range'
-
 # invalidate P1 zero values 
 df1.loc[df1['P1']==0,'P1'] = np.nan
 # This command locates when all Pcols in a row equal NaN, and set all temperatures to NaN, except SST
@@ -114,22 +111,6 @@ print(df1.head(20))
 # keep all temperature less than -1.8, set correcsponding calc dpths = 0
 # for ii,tcol in enumerate(Tcols):
 #     df1[tcol].where(df1[tcol]>=-1.8, np.nan, inplace=True) # args are cond, other (so acts like 'or')
-
-# # plot level 2 temperature data
-# fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
-# for ii,tcol in enumerate(Tcols):
-#     ax8.plot(df2['Dates'],df2[tcol],label=f'{tdepths[ii]}')
-# ax8.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-# ax8.grid()
-# ax8.legend()
-# ax8.set_title(f'Level 2 Temperature data from buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
-# plt.savefig(f'{figspath}/TemperaturesL2_{binf["name"][0]}-{int(binf["name"][1]):02d}_AfterEdit.png')
-
-# print(df1.head(20))
-
-
-# plotL1vL2(df1,df2,bid,'_afterOutOfRange')
-# exit(-1)
 
 # remove Ocean pressure bias
 print('Finding ocean pressure bias...')
@@ -149,52 +130,6 @@ if np.isnan(OPbias):
     print('You need a bias to continue')
     exit(-1)
 
-print('df1')
-print(df1.head())
-fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
-ax0.plot(df1['Dates'],-1*df1['P1corr'],'bx')
-ax0.set_title('Ocean Pressure with bias applied',wrap=True)
-# make daily dataframe
-
-# establish time period of ridging
-df1['ridging'] = 0
-ridge = input('Is there ridging evident in this dataset? : 0 for No, 1 for yes ')
-if ridge:
-    OPlimit = input('What is the pressure level of the ridging? ')
-    df1.loc[(df1['P1corr']<np.float(OPlimit)),'ridging'] = 1
-
-columns = [pcol+'max' for pcol in Pcolscorr if pcol != 'P0corr']
-print('pcol',pcol,Pcolscorr)
-print()
-print('columns',columns)
-dfdaily = pd.DataFrame(columns = columns)
-dfdaily['ridging'] = 0
-df1['P1corrmedian'] = np.nan
-for pcol in Pcolscorr:
-    dfdaily['Dates'] = df1.groupby(pd.Grouper(key='Dates',freq='D'))['Dates'].min().dt.floor('D') # this col needed for plotting
-    # df1['DatesDaily'] = df1.groupby(pd.Grouper(key='Dates',freq='D'))['Dates'].min().dt.floor('D') # this col needed for plotting
-    print(df1['Dates'].dt.year)
-    
-    # find max depth each day
-    dfdaily[pcol+'max'] = df1.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max()  # deepest
-    # print(dfdaily.head())
-    # ax0.plot(dfdaily['Dates'],-1*dfdaily[pcol+'max'],'r*')
-    # compute running median of max depths
-    dfdaily[pcol+'median'] = df1.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max().rolling(7,center=True).median()
-    dfdaily[pcol+'median'].fillna(method='bfill',inplace=True)
-    dfdaily[pcol+'median'].fillna(method='ffill',inplace=True)
-    dfdaily.loc[(dfdaily['P1corrmedian']<np.float(OPlimit)),'ridging'] = 1
-    # ax0.plot(dfdaily['Dates'],-1*dfdaily[pcol+'median'],'gx-')
-    for idx,row in dfdaily.iterrows():
-        if dfdaily.loc[idx,'ridging'] == 1:
-            df1.loc[(df1['Year']==dfdaily.loc[idx,'Dates'].year) &
-                    (df1['Month']==dfdaily.loc[idx,'Dates'].month) &
-                    (df1['Day']==dfdaily.loc[idx,'Dates'].day),pcol+'median'] = dfdaily.loc[idx,pcol+'median']
-    ax0.plot(df1['Dates'],-1*df1[pcol+'median'],'r.')
-    print(dfdaily.head())
-    print(dfdaily.tail())
-plt.show()
-exit(-1)
 
 # print(df1.tail())
 ### determine water/ice
@@ -211,76 +146,438 @@ for index, row in df1.iterrows():
 df1['WaterIce'] = indicator
 df1['mindist'] = mindist
 
-fig0,ax0 = plt.subplots(5,1,figsize=(15,15))
-ax0[0].plot(df2['Dates'],df2['WaterIce'],'bo-')
-ax0[0].plot(df1['Dates'],df1['WaterIce'],'r.')
-ax0[0].set_title(f'WaterIce indicator: NRT(b), CDR(r), Ice(1), Ocean(2), for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
-
-ax0[1].plot(df2['Dates'],df2['FirstTpod'],'bo')
-ax0[1].plot([df2['Dates'].iloc[0],df2['Dates'].iloc[-1]],[-1.2,-1.2],'k--')
-ax0[1].set_title('First temperature pod in water',wrap=True)
-
-ax0[4].plot(df1['Dates'],df1['mindist'],'r.')
-ax0[4].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[17.7,17.7],'k--')
-ax0[4].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[35.4,35.4],'k--')
-ax0[4].set_title('Minimum distance from buoy to nearest Ice, km',wrap=True)
-
-ax0[2].plot(df1['Dates'],df1['T0'],'b.')
-ax0[2].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1.2,-1.2],'k--')
-ax0[2].set_title('Buoy T0: shallowest thermistor, C',wrap=True)
-
-ax0[3].plot(df1['Dates'],-1*df1['P1corr'],'r.')
-ax0[3].set_title('Ocean Pressure with bias applied',wrap=True)
-
-for ax in ax0:
-    ax.grid()
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-plt.savefig(f'{figspath}/WaterIce_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+# find FWT only based on W/I indicator    
+# establish a new column
+df1['FirstTpod'] = 0
+df1.loc[df1['WaterIce']==1,'FirstTpod'] = 1
+# print(df1.columns)
+# fig4,ax4 = plt.subplots(2,1,figsize=(15,8))
+# ax4[0].plot(df1['Dates'],df1['WaterIce'],'b.')
+# ax4[0].set_title('Water/Ice indicator')
+# ax4[1].plot(df1['Dates'],df1['FirstTpod'],'r.--')
+# ax4[1].set_title('First Wet Thermistor, based only on Water/Ice indicator')
+# ax4[1].set_ylim([-0.2,5.2])
+# for ax in ax4:
+#     ax.grid()
+#     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
 # plt.show()
 
-fig1,ax1 = plt.subplots(len(Pcols)-1,1,figsize=(15,5*(len(Pcols)-1)))
-ax1.plot(df1['Dates'],-1*df1['P1corr'],'r.-')
-ax1.plot(df2['Dates'],-1*df2['P1'],'b.-')
-ax1.set_title(f'Ocean pressure corrected for bias, at nominal depth of {pdepths[1]}db: W(b) S(r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
-ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-mndiff = f'Mean diff: {df2["P1"].mean() - df1["P1corr"].mean():.2f}'
-ax1.text(df1['Dates'].iloc[10],-1*pdepths[1]+5,mndiff,fontdict={'fontsize':12})
-ax1.grid()
-if len(Pcols)>2:
-    for ii,ax in enumerate(ax1):
-        if ii != 0:
-            print('ii',ii)
-            ax.plot(df1['Dates'],-1*df1[f'P{ii+1}corr'],'r.-')
-            ax.plot(df2['Dates'],-1*df2[f'P{ii+1}'],'b.-')
-            ax.set_title(f'Ocean pressure corrected for bias, at nominal depth of {pdepths[ii+1]}db: W(b) S(r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
-            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-            mndiff = f'Mean diff: {df2[f"P{ii+1}"].mean() - df1[f"P{ii+1}corr"].mean()}'
-            ax.text(df1['Dates'].iloc[10],-1*pdepths[ii+1]+5,mndiff,fontdict={'fontsize':12})
-            ax.grid()
-fig1.savefig(f'{figspath}/OPbiasCorr_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+# # press and dp/dt
+# fig1,ax1 = plt.subplots(2,1,figsize=(15,5))
+# ax1[0].plot(df1['Dates'],-1*df1['P1corr'],'b.-')
+# ax1[0].xaxis.set_major_locator(mdates.DayLocator(interval=1))
+# ax1[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+# ax1[0].set_title('Bias corrected Measured Pressure')
+# df1['dpdt'] = -1*df1['P1corr'].diff() / (df1['Dates'].diff().apply(lambda x: x/ np.timedelta64(1,'h')))
+# print(df1.head())
+# print(df1.tail())
+
+# # df1['P1corrRM'] = df1.groupby(pd.Grouper(key='Dates',freq='h'))['P1corr'].mean().rolling(3,center=True).median()
+# df1['P1corrRM'] = df1['P1corr'].rolling(3,center=True).mean()
+
+# ax1[1].plot(df1['Dates'],df1['dpdt'],'b.-')
+# ax1[1].plot(df1.loc[(df1['dpdt'].abs()>0.2),'Dates'],df1.loc[(df1['dpdt'].abs()>0.2),'dpdt'],'r.')
+# ax1[0].plot(df1.loc[(df1['dpdt'].abs()>0.2),'Dates'],-1*df1.loc[(df1['dpdt'].abs()>0.2),'P1corr'],'r.')
+# ax1[1].xaxis.set_major_locator(mdates.DayLocator(interval=1))
+# ax1[1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+# ax1[1].set_title('change in Bias corrected Measured Pressure in m/hour')
+# plt.show()
+# # for ii in range(2):
+# #     if ii==0:
+# #         dt1 = dt.datetime(2016,11,7)
+# #         dt2 = dt.datetime(2016,11,11)
+# #     elif ii==1:
+# #         dt1 = dt.datetime(2017,7,21)
+# #         dt2 = dt.datetime(2017,7,24)
+        
+# #     for ax in ax1:
+# #         ax.set_xlim([dt1,dt2])
+# #         ax.grid()
+# #     plt.show()
+# exit(-1)
+ 
+# find riding times (besides indicated by Water/Ice indicator), put on .csv file
+rTimes = input('Do you want to make ridging time periods file? : y for Yes, n for No ')
+if rTimes.startswith('y'):
+    fig1,ax1 = plt.subplots(1,1,figsize=(15,5))
+    ax1.plot(df1['Dates'],-1*df1['P1corr'],'b.-')
+    ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    # defining the cursor
+    cursor = Cursor(ax1,color='r',useblit=True)
+    # creating annotate box
+    annot = ax1.annotate('',xy=(0,0),xytext=(1,1),xycoords='data',textcoords='offset points',
+                        bbox={'boxstyle':'round4','fc':'linen','ec':'k','linewidth':1},
+                        arrowprops={'arrowstyle':'-|>'})
+    annot.set_visible(False)
+    # function for showing and storing the clicks.
+    coord=[]
+    def onclick(event):
+        global coord
+        x = event.xdata
+        y = event.ydata
+        coord.append((mdates.num2date(x).strftime('%Y-%m-%d %H:%M:%S'),y))
+        print([mdates.num2date(x).strftime('%Y-%m-%d %H:%M:%S'),y])
+        annot.xy = (x,y)
+        text = f'{mdates.num2date(x).strftime("%Y-%m-%d %H:%M:%S")}, {y:.2f}'
+        annot.set_text(text)
+        annot.set_visible(True)
+        fig1.canvas.draw()
+    
+    cid = fig1.canvas.mpl_connect('button_press_event',onclick)
+    plt.show()
+    fig1.canvas.mpl_disconnect(cid)
+    plt.close()
+
+# manually fill this file
+ridgeFile = f'/Users/suzanne/Google Drive/UpTempO/level2/ridging{binf["name"][0]}-{int(binf["name"][1]):02d}.csv'
+dfr = pd.read_csv(ridgeFile)
+dfr.dropna(axis=0,how='all',inplace=True)
+
+# plot to ensure the ridged areas
+rcols = ['m','c','r','g','orange','m']
+fig3,ax3 = plt.subplots(4,1,figsize=(15,12))
+ax3[0].plot(df1['Dates'],-1*df1['P1corr'],'b.')
+
+df1['ridged'] = 0  # binary whether riding or no
+for ii,row in dfr.iterrows():
+    # if ii==1:
+    #     print(df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'Dates'])
+        print(ii,row)
+        ax3[0].plot(df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'Dates'],
+                -1*df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'P1corr'],
+                '.',color=rcols[ii])
+        df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'ridged'] = 1
+ax3[0].set_yticks(np.arange(np.floor(-1*df1['P1corr'].max()),np.ceil(-1*df1['P1corr'].min()),1))
+ax3[0].set_title('OP corrected for bias, colors for ridge levels')
+ax3[1].plot(df1['Dates'],df1['ridged'],'b.')
+ax3[1].set_title('Ridged: 0 = no, 1 = yes')
+ax3[2].plot(df1['Dates'],df1['WaterIce'],'b.')
+ax3[2].set_title('Water (2), Ice (1)')
+
+# looking at ridged areas and set FirstTpod (FWT)
+for ii,row in dfr.iterrows():
+    for index,ridgerow in df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii])].iterrows():
+        # how much ridging?
+        metersofRidge = pdepths[1] - df1['P1corr'].iloc[index]
+        numZeros = len([x for x in tdepths if x<metersofRidge])
+
+        # set calculated depths  'shallower' than FWT as 0        
+        for dcol in Dcols[:numZeros]:
+            df1.loc[index,dcol] = 0
+        df1.loc[index,'FirstTpod'] = numZeros
+
+ax3[3].plot(df1['Dates'],df1['FirstTpod'],'r.')
+ax3[3].set_title('First Wet Thermistor (zero based)')
+for ax in ax3:
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax.grid()
 plt.show()
+
+# find SST based on first wet thermistor, or actually temperature of FWT
+df1['sst']= np.nan
+# last time of max FWT.  As we 'de-ridge' we want only declining, no popping around.
+fwtmax = df1['FirstTpod'][::-1].idxmax()
+print('maximum fwt',fwtmax)
+for ii,row in df1.iterrows():
+    if ii>fwtmax:
+        if df1.loc[ii,'FirstTpod'] > df1.loc[ii-1,'FirstTpod']:
+            df1.loc[ii,'FirstTpod'] = df1.loc[ii-1,'FirstTpod']
+    fwt = df1.loc[ii,'FirstTpod']
+    # log temperature of FWT
+    df1.loc[ii,'sst' ] = df1.loc[ii,Tcols[fwt]]
+
+# fig4,ax4 = plt.subplots(3,1,figsize=(15,12))
+# ax4[0].plot(df1['Dates'],-1*df1['P1corr'],'b.')
+# ax4[0].set_yticks(np.arange(np.floor(-1*df1['P1corr'].max()),np.ceil(-1*df1['P1corr'].min()),1))
+# ax4[0].set_title('Bias Corrected OP')
+# ax4[1].plot(df1['Dates'],df1['FirstTpod'],'r.--')
+# ax4[1].set_title('First Wet Thermistor')
+# ax4[2].plot(df1['Dates'],df1['sst'],'b.')
+# ax4[2].set_title('SST as determined from FWT')
+# dt1=dt.datetime(2017,7,18)
+# dt2=dt.datetime(2017,7,23)
+# for ax in ax4:
+#     ax.grid()
+#     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+#     ax.set_xlim([dt1,dt2])
+# plt.show()
+
+ridgedPresFile = f'/Users/suzanne/Google Drive/UpTempO/level2/ridgedPressure{binf["name"][0]}-{int(binf["name"][1]):02d}.csv'
+
+writeCSV = input('Do you want to make a new ridgePressure .csv now? : y for yes, n for no ')
+if writeCSV.startswith('y'):
+    df1['ridgedPressure'] = -1*pdepths[-1]
+    
+    for ii in range(len(dfr)):
+        df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'ridgedPressure'] = dfr['OPlimit'][ii]
+
+    col2move = df1.pop('Dates')
+    df1.insert(0,'Dates',col2move)
+    col2move = df1.pop('P1corr')
+    df1.insert(1,'P1corr',col2move)
+    col2move = df1.pop('ridgedPressure')
+    df1.insert(2,'ridgedPressure',col2move)
+    print(df1.head())
+
+    df1.to_csv(ridgedPresFile)
+        
+    # fig4,ax4 = plt.subplots(1,1,figsize=(15,6))
+    # ax4.plot(df1['Dates'],-1*df1['P1corr'],'b.')
+    # ax4.plot(df1['Dates'],df1['ridgedPressure'],'r.-')
+    # ax4.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    # ax4.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    # ax4.set_yticks(np.arange(np.floor(-1*df1['P1corr'].max()),np.ceil(-1*df1['P1corr'].min()),0.1))
+    # ax4.set_title('original ridefs pressures ')
+    # ax4.grid()
+    # ax4.set_title('Bias Corrected OP(b), RidgedPressure(r)')
+    # plt.show()
+    
+    # # move column ridgedPressure to be next to Dates, for each editing.
+    # plt.show()
+    
+dt1 = dt.datetime(2016,11,1)
+dt2 = dt.datetime(2016,11,5)
+readCSV = input('Do you want to read in ridgePressure .csv now? : y for yes, n for no ')
+if readCSV.startswith('y'):
+    print(ridgedPresFile)
+    df1a = pd.read_csv(ridgedPresFile)
+    print(df1a.columns)
+    fig4,ax4 = plt.subplots(1,1,figsize=(15,6))
+    ax4.plot(df1['Dates'],-1*df1['P1corr'],'b.')
+    ax4.plot(df1['Dates'],df1a['ridgedPressure'],'r.-')
+    # ax4.xaxis.set_major_locator(mdates.DayLocator(interval=4))
+    ax4.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax4.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d')) #%Y-%m-%dT%H:%M
+    ax4.set_yticks(np.arange(np.floor(-1*df1['P1corr'].max()),np.ceil(-1*df1['P1corr'].min()),1))
+    ax4.set_xlim(dt1,dt2)
+    ax4.set_title('manually edited Ridged Pressures (r), bias corrected OP (b)')
+    fig4.savefig(f'{figspath}/ManuallyRigedPressures_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+    plt.show()    
+
+print('Interpolating calculated depths...')
+tcalcdepths=np.full([len(df1),len(tdepths)],np.nan)
+print('tcalc depths shape',tcalcdepths.shape)
+# n=0
+# assuming only P1(corr)
+print('Pcolscorr',Pcolscorr)
+for ii, row in df1.iterrows():
+    if not df1['ridged'].iloc[ii]:
+        # if np.all(df1[Pcolscorr].iloc[ii] >= pdepths):  # .ge means deeper
+        if df1[Pcolscorr[-1]].iloc[ii] >= pdepths[-1]:  # .ge means deeper
+            tcalcdepths[ii,:] = tdepths + ( df1['P1corr'].iloc[ii] - pdepths[1])
+            # print('tdepths',tdepths)
+            # print('P1corr measured',df1['P1corr'].iloc[ii])
+            # print(tcalcdepths[ii,:])
+            # exit(-1)
+        else:
+            pmeas = list(itertools.chain.from_iterable([[0],df1[Pcolscorr].iloc[ii]]))
+            fi = interpolate.interp1d(pdepths,pmeas,fill_value = 'extrapolate')    
+            tinvolved = tdepths
+            tcalcdepths[ii,:] = fi(tinvolved)
+            # print('tdepths',tdepths)
+            # print('P1corr measured',df1['P1corr'].iloc[ii])
+            # print(tcalcdepths[ii,:])
+            # exit(-1)
+    else:  # ridged
+        # if -1*df1['P1corr'].iloc[ii] - (df1a['ridgedPressure'].iloc[ii]+0.2) <= 0:  # assuming string straight
+        #     tcalcdepths[ii,:] = tdepths + ( df1['P1corr'].iloc[ii] - pdepths[1])
+        #     # print('tdepths',tdepths)
+        #     # print('P1corr measured',df1['P1corr'].iloc[ii])
+        #     # print(tcalcdepths[ii,:])
+        #     deepestZero = df1['FirstTpod'].iloc[ii]
+        #     tcalcdepths[ii,:deepestZero] = 0
+        #     # print(df1['FirstTpod'].iloc[ii])
+        #     # print(tcalcdepths[ii,:])
+        #     # exit(-1)
+        # else:
+            pmeas = list(itertools.chain.from_iterable([[0],df1[Pcolscorr].iloc[ii]]))
+            deepestZero = df1['FirstTpod'].iloc[ii]
+            pdepthsRidged = [-1*df1a['ridgedPressure'].iloc[ii]] #[x-tdepths[deepestZero-1] for x in pdepths[1:]]
+            pdepthsRidged.insert(0,0)
+            print('pmeas',pmeas)
+            print('pdepthsRidged',pdepthsRidged)
+            print('deepestZero',deepestZero)
+            fi = interpolate.interp1d(pdepthsRidged,pmeas,fill_value = 'extrapolate')  
+            offset = pdepths[1] - pdepthsRidged[1]
+            print('offset',offset)
+            tdepthsRidged = [x- offset for x in tdepths]  #( df1['P1corr'].iloc[ii] - pdepths[1])
+            print('tdepthsRidged',tdepthsRidged)
+            tcalcdepths[ii,:] = fi(tdepthsRidged)
+            print('tcalcdepths',tcalcdepths[ii,:])
+            tcalcdepths[ii,:deepestZero] = 0
+            # exit(-1)
+tcalcdepths = np.array(tcalcdepths)
+print(tcalcdepths.shape)
+print(Dcols)
+
+for ii,dcol in enumerate(Dcols):
+    print(dcol)
+    df1[dcol] = tcalcdepths[:,ii]
+
+print('Done')
+print(df1.columns)
+print()
+print(df2.columns)
+
+fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+for ii,dcol in enumerate(Dcols):
+    ax8.plot(df1['Dates'],-1*df1[dcol],'.',color=cList[ii],label=f'{tdepths[ii]}')
+ax8.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+ax8.set_yticks(np.arange(-26,1))
+ax8.set_title('Suzanne s calculated depths ')
+ax8.grid()
+ax8.legend(loc='lower center')
+ax8.set_xlim(dt1,dt2)
+fig8.savefig(f'{figspath}/CalcDepthsSuzanne_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+plt.show()
+   
+fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+for ii,dcol in enumerate(Dcols):
+    ax8.plot(df2['Dates'],-1*df2[dcol],'.',color=cList[ii],label=f'{tdepths[ii]}')
+ax8.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+ax8.set_yticks(np.arange(-26,1))
+ax8.set_title('Wendy s calculated depths ')
+ax8.grid()
+ax8.legend(loc='lower center')
+ax8.set_xlim(dt1,dt2)
+fig8.savefig(f'{figspath}/CalcDepthsWendy_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+plt.show()
+   
+
+mergedf = pd.merge(df1,df2,how='inner', on=['Dates'])
+print(mergedf.columns)
+
+fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+for ii,dcol in enumerate(Dcols):
+    ax8.plot(mergedf['Dates'],mergedf[dcol+'_x']-mergedf[dcol+'_y'],'.',color=cList[ii],label=f'{tdepths[ii]}')
+ax8.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+# ax8.set_yticks(np.arange(-26,1))
+ax8.set_title('Suzannes (+depths) minus Wendys (+depths) calculated depths ')
+ax8.grid()
+ax8.legend(loc='lower center')
+ax8.set_xlim(dt1,dt2)
+fig8.savefig(f'{figspath}/CalcDepthsSuzanne-Wendy_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+plt.show()
+   
+fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+ax8.plot(mergedf['Dates'],mergedf['WaterIce_y'],'b+')
+ax8.plot(mergedf['Dates'],mergedf['WaterIce_x'],'rx')
+ax8.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+# ax8.set_yticks(np.arange(-26,1))
+ax8.set_title('Water/Ice indicator Wendy(b+) Suzanne(rx)')
+ax8.grid()
+ax8.legend(loc='lower center')
+ax8.set_xlim(dt1,dt2)
+fig8.savefig(f'{figspath}/WaterIceWendySuzanne_zoom_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+plt.show()
+
+# print(newdf[['P1corr','P1_y']].diff(axis=1).head(30)) #.mean())
+# print(newdf[['P1corr','P1_y']].head(30)) #.mean())
+# print(df2['Dates'].isin(df1['Dates']).iloc(3))
+
+    
+exit(-1)
+
+
+
+
+
+
+
+
+# fig0,ax0 = plt.subplots(5,1,figsize=(15,12))
+# ax0[0].plot(df2['Dates'],df2['WaterIce'],'bo-')
+# ax0[0].plot(df1['Dates'],df1['WaterIce'],'r.')
+# ax0[0].set_title(f'WaterIce indicator: NRT(b), CDR(r), Ice(1), Ocean(2), for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
+
+# ax0[1].plot(df2['Dates'],df2['FirstTpod'],'bo')
+# ax0[1].plot(df1['Dates'],df1['FirstTpod'],'r.')
+# ax0[1].plot([df2['Dates'].iloc[0],df2['Dates'].iloc[-1]],[-1.2,-1.2],'k--')
+# ax0[1].set_title('First temperature pod in water',wrap=True)
+
+# ax0[4].plot(df1['Dates'],df1['mindist'],'r.')
+# ax0[4].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[17.7,17.7],'k--')
+# ax0[4].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[35.4,35.4],'k--')
+# ax0[4].set_title('Minimum distance from buoy to nearest Ice, km',wrap=True)
+
+# ax0[2].plot(df1['Dates'],df1['T0'],'b.')
+# ax0[2].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1.2,-1.2],'k--')
+# ax0[2].set_title('Buoy T0: shallowest thermistor, C',wrap=True)
+
+# # ax0[3].plot(df2['Dates'],-1*df2['P1'],'bx')
+# ax0[3].plot(df1['Dates'],-1*df1['P1corr'],'r.')
+# ax0[3].set_title('Ocean Pressure with bias applied',wrap=True)
+
+# for ax in ax0:
+#     ax.grid()
+#     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+# plt.savefig(f'{figspath}/WaterIce_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+
+# fig1,ax1 = plt.subplots(1,1,figsize=(15,5))
+# ax1.plot(df1['Dates'],-1*df1['P1corr'],'r.')
+# ax1.grid()
+# ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+# ax1.gca().fmt_xdata(mdates.DateFormatter())
+# ax1.set_title('Ocean Pressure with bias applied',wrap=True)
+
+# plt.show()
+# exit(-1)
+# fig1,ax1 = plt.subplots(len(Pcols)-1,1,figsize=(15,5*(len(Pcols)-1)))
+# ax1.plot(df1['Dates'],-1*df1['P1corr'],'r.-')
+# ax1.plot(df2['Dates'],-1*df2['P1'],'b.-')
+# ax1.set_title(f'Ocean pressure corrected for bias, at nominal depth of {pdepths[1]}db: W(b) S(r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
+# ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+# mndiff = f'Mean diff: {df2["P1"].mean() - df1["P1corr"].mean():.2f}'
+# ax1.text(df1['Dates'].iloc[10],-1*pdepths[1]+5,mndiff,fontdict={'fontsize':12})
+# ax1.grid()
+# if len(Pcols)>2:
+#     for ii,ax in enumerate(ax1):
+#         if ii != 0:
+#             print('ii',ii)
+#             ax.plot(df1['Dates'],-1*df1[f'P{ii+1}corr'],'r.-')
+#             ax.plot(df2['Dates'],-1*df2[f'P{ii+1}'],'b.-')
+#             ax.set_title(f'Ocean pressure corrected for bias, at nominal depth of {pdepths[ii+1]}db: W(b) S(r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}',wrap=True)
+#             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+#             mndiff = f'Mean diff: {df2[f"P{ii+1}"].mean() - df1[f"P{ii+1}corr"].mean()}'
+#             ax.text(df1['Dates'].iloc[10],-1*pdepths[ii+1]+5,mndiff,fontdict={'fontsize':12})
+#             ax.grid()
+# fig1.savefig(f'{figspath}/OPbiasCorr_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+# plt.show()
 
 # establish time period of ridging
 df1['ridging'] = 0
 ridge = input('Is there ridging evident in this dataset? : 0 for No, 1 for yes ')
-if ridge:
-    OPlimit = input('What is the pressure level of the ridging? ')
-    df1.loc[(df1['P1corr']<np.float(OPlimit)),'ridging'] = 1
-    # global coords
+
+# try same as with pressure bias, click times.
+while ridge:
+    # for ii,pcol in enumerate(Pcolscorr):
+        df1 = getRidging(pcol,pdepths[ii+1],df1,bid,figspath)
+        ridge = input('Is there another ridging evident in this dataset? : 0 for No, 1 for yes ')
+    # OPlimit = input('What is the pressure level of the ridging? ')
+    # df1.loc[(df1['P1corr']<np.float(OPlimit)),'ridging'] = 1
+    # # global coords
     # for ii,pcol in enumerate(Pcols):
     #     if pcol != 'P0':
     #         print()
     #         print(ii,pcol,pdepths[ii])
     #         df1 = getRidging(pcol,pdepths[ii],df1,bid,figspath)
-               
-fig7,ax7 = plt.subplots(1,1,figsize=(15,5))
+print(df1.head())
+exit(-1)  
+
+             
+fig5,ax5 = plt.subplots(1,1,figsize=(15,5))
 # ax7[0].plot(df1['Dates'],df1['ridging'],'.')
 # ax7[0].set_title(f'Ridging for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}')
-ax7.plot(df1['Dates'],-1*df1['P1corr'],'.')
-ax7.plot(df1.loc[(df1['ridging']==1),'Dates'],-1*df1.loc[(df1['ridging']==1),'P1corr'],'ro')
-ax7.grid()
-ax7.set_title(f'Pressures showing ridging (r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}')
-fig7.savefig(f'{figspath}/RidgingPressures_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+ax5.plot(df1['Dates'],-1*df1['P1corr'],'.')
+ax5.plot(df1.loc[(df1['ridging']==1),'Dates'],-1*df1.loc[(df1['ridging']==1),'P1corr'],'ro')
+ax5.grid()
+ax5.set_title(f'Pressures showing ridging (r) for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}')
+fig5.savefig(f'{figspath}/RidgingPressures_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
 
 # find thermisters at zero depth
 df1[Dcols[0]] = 0
@@ -315,6 +612,12 @@ for index, row in df1.iterrows():
 ax0[1].plot(df1['Dates'],df1['FirstTpod'],'r.')
 fig0.savefig(f'{figspath}/WaterIce_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
 
+# for ax in ax7:
+#     ax.set_xlim([dt.datetime(2017,7,17),dt.datetime(2017,7,21)])
+# ax7[0].plot(df1['Dates'],df1['FirstTpod'],'r.')
+# plt.savefig(f'{figspath}/WhatisHappeningZoom_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+plt.show()
+exit(-1)
 # print(df1.head())
 # exit(-1)
 
@@ -357,71 +660,6 @@ print(Pcolscorr)
 print()
 print()
 print()
-
-print('Interpolating calculated depths...')
-tcalcdepths=np.full([len(df1),len(tdepths)],0)
-# print('tcalc depths shape',tcalcdepths.shape)
-# n=0
-for ii, row in df1.iterrows():
-    # if the P measured is deeper than nominal, assume the entire line has been pulled down by same amount. 
-    if np.all(df1[Pcolscorr].iloc[ii] >= pdepths):  # .ge means deeper
-        tcalcdepths[ii,:]=tdepths + ( df1['P1corr'].iloc[ii] - pdepths[1])
-        # tmp=tdepths+( df1['P1corr'].iloc[ii] - pdepths[1])
-    # if the P measured is shallower than nominal, interpolate thermister depths up to zero(surface). 
-    else:
-        # if ii>240 and ii<250:
-        #     print('line 199',ii,pdepths,df1[Pcolscorr].iloc[ii],tdepths)
-        #     print()
-        # fi = interpolate.interp1d(pdepths,df1[Pcolscorr].iloc[ii],fill_value = 'extrapolate')    
-        # deepestZero = df1['FirstTpod'].iloc[ii]
-        # if df1['FirstTpod'].iloc[ii] == 0:
-        #     tinvolved = tdepths
-        # else:     
-        #     tinvolved = list(itertools.chain.from_iterable([[0],tdepths[df1['FirstTpod'].iloc[ii]:]]))
-        # tcalcdepths.append(fi(tinvolved))
-        # if df1['ridging'].iloc[ii] ==1:
-            print(df1[Dcols].iloc[ii])
-            print(df1['FirstTpod'].iloc[ii])
-            deepestZero = max(df1['FirstTpod'].iloc[ii] - 1,0)
-            print(deepestZero)
-            print('depth offset due to ridging',tdepths[deepestZero])
-            print('fwt',df1['FirstTpod'].iloc[ii])
-            tinvolved = np.array(tdepths[np.int(df1['FirstTpod'].iloc[ii]):]) - tdepths[deepestZero]
-            print(tinvolved)
-            if tinvolved[0] != 0:
-                tinvolved = np.insert(tinvolved,0,0)
-
-            print('tdepths involved',tinvolved)
-            print(df1[Pcolscorr].iloc[ii])
-            print('last tinvolved',tinvolved[-1])
-            print(np.insert(np.array(tinvolved[-1]),0,0))
-            # print('depestZero',deepestZero)
-            # print('tdepths involved',tdepths[deepestZero:])
-            fi = interpolate.interp1d(np.insert(np.array(tinvolved[-1]),0,0),df1[Pcolscorr].iloc[ii],fill_value = 'extrapolate')    
-            print('tdepths calculated', fi(tinvolved))
-            print()
-            tcalcdepths[ii,-len(tinvolved):] = np.array(fi(tinvolved))
-            # n += 1
-            # if n>5:
-            #     exit(-1)
- 
-tcalcdepths = np.array(tcalcdepths)
-print(len(df1))
-# print(tcalcdepths.shape#   fi(tinvolved) not all same length
-for ii in range(len(tdepths)):
-    df1[f'D{ii}'] = tcalcdepths[:,ii]
-
-
-print('Done')
-print(df1.columns)
-print()
-print(df2.columns)
-
-newdf = pd.merge(df1,df2,how='inner', on=['Dates'])
-print(newdf.columns)
-# print(newdf[['P1corr','P1_y']].diff(axis=1).head(30)) #.mean())
-# print(newdf[['P1corr','P1_y']].head(30)) #.mean())
-# # print(df2['Dates'].isin(df1['Dates']).iloc(3))
 
 # fig1,ax1 = plt.subplots(1,1,figsize=(15,5))
 # h = ax1.imshow(df1[Dcols],vmin=0,vmax=26)

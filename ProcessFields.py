@@ -35,8 +35,10 @@ def getICE(strdate='default',nors='n'):
             break
         
         nsidc_download_0081_v02(strdate,nors)
-        icepath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/NSIDC_ICE/{regdict[nors]}/{strdate[:4]}'
+        # icepath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/NSIDC_ICE/{regdict[nors]}/{strdate[:4]}'
+        icepath = f'/Users/suzanne/Google Drive/UpTempO/Satellite_Fields/NSIDC_ICE/{regdict[nors]}/{strdate[:4]}'
         icefile = f'NSIDC0081_SEAICE_PS_{nors.capitalize()}25km_{strdate}_v2.0.nc'
+        print('line 41 in pfields',f'{icepath}/{icefile}')
         if os.path.exists(f'{icepath}/{icefile}'):  
             ncdata=nc.Dataset(f'{icepath}/{icefile}')   
             # print('flag meanings',ncdata.variables['F18_ICECON'].getncattr('flag_meanings'))
@@ -131,7 +133,7 @@ def processNSIDCice(strdate='default',nors='n'):
 #============== Get and process SLP ================
 def getNCEPslp(year):
     servfile=f'slp.{year}.nc'
-    localput=f'/Volumes/GoogleDrive/My Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
+    localput=f'/Users/suzanne/Google Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
     localfile=open(localput,'wb')
 
     #ftp://ftp.cdc.noaa.gov/Datasets/ncep.reanalysis.dailyavgs/surface/slp.2016.nc
@@ -158,7 +160,8 @@ def getNCEPslp(year):
     
 def processSLP(year,writexy=0):
 
-    path=f'/Volumes/GoogleDrive/My Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
+    # path=f'/Volumes/GoogleDrive/My Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
+    path=f'/Users/suzanne/Google Drive/UpTempO/SeaLevelPressure/slp.{year}.nc'
     ncdata=nc.Dataset(path)
     #for dim in ncdata.dimensions.values(): print(dim)
     #for var in ncdata.variables.values(): print(var)
@@ -304,10 +307,9 @@ def getSST(strdate='default'):
     print(strdate)
     # SST is available ~9am Pacific
     thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
-    theurl=('https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/'+year+month+'/'+thefile)
+    theurl=f'https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/{year}{month}/{thefile}'
     
-    ncpath=f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/sstNOAA/{year}/{thefile}'
-
+    ncpath=f'/Users/suzanne/Google Drive/UpTempO/Satellite_Fields/sstNOAA/{year}/{thefile}'
     # if not os.path.exists(theurl):
     #     theurl = theurl.replace('_preliminary','')  
 
@@ -315,6 +317,8 @@ def getSST(strdate='default'):
     noFile = True
     numDaysBack = 0
     while noFile: 
+        print('line 320 in processefields', noFile,numDaysBack)
+        print(theurl)
         if numDaysBack==7:
             break
         request = urllib.request.Request(theurl)
@@ -329,8 +333,8 @@ def getSST(strdate='default'):
             objdate = objdate - dt.timedelta(days=1)
             strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
             thefile='oisst-avhrr-v02r01.'+strdate+'_preliminary.nc'
-            theurl = f'https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/{objdate.year}{objdate.month}/{thefile}'
-            ncpath = f'/Volumes/GoogleDrive/My Drive/UpTempO/Satellite_Fields/sstNOAA/{objdate.year}/{thefile}'
+            theurl = f'https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/{objdate.year}{objdate.month:02}/{thefile}'
+            ncpath = f'/Users/suzanne/Google Drive/UpTempO/Satellite_Fields/sstNOAA/{objdate.year}/{thefile}'
             
     if numDaysBack<7:
         ncdata=nc.Dataset(ncpath)   

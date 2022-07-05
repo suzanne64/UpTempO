@@ -424,28 +424,6 @@ def getOPbias(pcol,pdepth,df,bid,figspath):
             
         return 
         
-    # make dataFrame to store daily values
-    # columnsdaily = [pcol+'medians' for pcol in Pcols if pcol != 'P0']
-    # columns = [pcol+'max',pcol+'medians']
-    # dfdaily = pd.DataFrame(columns = columns)
-
-    # following Wendy's FineTuneOPbias subroutine in QC_FUNCTIONS_UPTEMPO.pro
-    print(pdepth,pcol)
-    print()
-    print()
-    # print(df.loc[df[pcol]>25,['Dates',pcol]])
-    # meanOPbias = df.loc[df[pcol]>25,[pcol]].mean()
-    # modeOPbias = df.loc[df[pcol]>25,[pcol]].mode()
-    # print(f"mean depths of those greater than {pdepth} = \n{meanOPbias[pcol]}")
-    # print(f"mode of depths greater than {pdepth} = \n{modeOPbias[pcol][0]}")
-    # make daily dataframe
-    # dfdaily['Dates'] = df.groupby(pd.Grouper(key='Dates',freq='D'))['Dates'].min().dt.floor('D') # this col needed for plotting
-    # # find max depth each day
-    # dfdaily[pcol+'max'] = df.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max()  # deepest
-    # # compute running median of max depths
-    # dfdaily[pcol+'medians'] = df.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max().rolling(7,center=True).median()
-    # print(dfdaily.head())
-    # exit(-1)
     # plot pressures to find bias        
     fig5,ax5 = plt.subplots(1,1,figsize=(25,5))
     cid = fig5.canvas.mpl_connect('pick_event', onpick)
@@ -453,21 +431,15 @@ def getOPbias(pcol,pdepth,df,bid,figspath):
     dt0 = dt.datetime(np.int(df['Year'].iloc[0]),np.int(df['Month'].iloc[0]),np.int(df['Day'].iloc[0]))
     ax5.set_xlim([dt0,dt0+dt.timedelta(days=30)])
     ax5.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-    ax5.set_title(f'First month of Ocean Pressure for buoy {binf["name"][0]}-{int(binf["name"][1]):2d}, at nominal depth of {pdepth:.0f}m.',wrap=True,fontsize=20)
+    ax5.set_title(f'First month of Ocean Pressure for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}, at nominal depth of {pdepth:.0f}m.',wrap=True,fontsize=20)
     ax5.grid()
     plt.show()
     fig5.savefig(f'{figspath}/OPbiasDetermination_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
     plt.close()
-    # exit(-1)
-    # print('daily', dfdaily.head())
-    # print('GDI',coords[0][0],coords[1][0])
-    # calculate OP bias = mean(median pressures) between two dates clicked on plot MINUS nominal depth which = positive value
-    print()
     # OPbias1 = dfdaily[(dfdaily['Dates']>=coords[0][0]) & (dfdaily['Dates']<=coords[1][0])][pcol+'medians'].mean() - pdepth
-    OPbias = df[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0])][pcol].median() - pdepth
+    OPbias = df.loc[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]),pcol].median() - pdepth
     # OPbias3 = df[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0])][pcol].mode() - pdepth
     print('bias from median of L1 pressures btn two clicks',OPbias)
-    # exit(-1)
     # minP = df[ (df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]) & (df[pcol]>25)]
     # minP = df[ df[pcol]>25]
     # OPbias = pdepth - meanOPbias[pcol]
@@ -495,6 +467,108 @@ def getOPbias(pcol,pdepth,df,bid,figspath):
     #     ax.add_artist(text_annotation)
 
     return df, OPbias
+
+def getRidgeDates(pcol,df): #pcol,pdepth,df,bid,figspath):
+    # binf = BM.BuoyMaster(bid)
+    
+    global coords
+    coords=[]
+    def onpick(event):
+        thisline = event.artist
+        xdata = thisline.get_xdata()
+        ydata = thisline.get_ydata()
+        # get the index of the point that was picked (clicked on)    
+        ind = event.ind
+        xd, yd = xdata[ind], ydata[ind]
+        
+        global coords
+        coords.append([xd[0],yd[0]]) # take first, incase 'radius=3' grabs a couple of points
+        print('coords ',coords)
+        
+        # draw it
+        ax5.plot(xdata[ind],ydata[ind],'ro')
+        event.canvas.draw()
+        
+        # disconnect after two clicks (per nominal ocean depth)
+        num_markers = 2
+        if np.mod(len(coords),num_markers) == 0:
+            fig5.canvas.mpl_disconnect(cid)
+            plt.close()
+            
+        return 
+        
+    # make dataFrame to store daily values
+    # columnsdaily = [pcol+'medians' for pcol in Pcols if pcol != 'P0']
+    # columns = [pcol+'max',pcol+'medians']
+    # dfdaily = pd.DataFrame(columns = columns)
+
+    # following Wendy's FineTuneOPbias subroutine in QC_FUNCTIONS_UPTEMPO.pro
+    # print(pdepth,pcol)
+    # print()
+    # print()
+    # print(df.loc[df[pcol]>25,['Dates',pcol]])
+    # meanOPbias = df.loc[df[pcol]>25,[pcol]].mean()
+    # modeOPbias = df.loc[df[pcol]>25,[pcol]].mode()
+    # print(f"mean depths of those greater than {pdepth} = \n{meanOPbias[pcol]}")
+    # print(f"mode of depths greater than {pdepth} = \n{modeOPbias[pcol][0]}")
+    # make daily dataframe
+    # dfdaily['Dates'] = df.groupby(pd.Grouper(key='Dates',freq='D'))['Dates'].min().dt.floor('D') # this col needed for plotting
+    # # find max depth each day
+    # dfdaily[pcol+'max'] = df.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max()  # deepest
+    # # compute running median of max depths
+    # dfdaily[pcol+'medians'] = df.groupby(pd.Grouper(key='Dates',freq='D'))[pcol].max().rolling(7,center=True).median()
+    # print(dfdaily.head())
+    # exit(-1)
+    # plot pressures to find bias        
+    fig5,ax5 = plt.subplots(1,1,figsize=(25,5))
+    cid = fig5.canvas.mpl_connect('pick_event', onpick)
+    ax5.plot(df['Dates'],-1*df[pcol],'b.-',linewidth=1,picker=True,pickradius=1)  # actual L1 depths
+    dt0 = dt.datetime(np.int(df['Year'].iloc[0]),np.int(df['Month'].iloc[0]),np.int(df['Day'].iloc[0]))
+    # ax5.set_xlim([dt0,dt0+dt.timedelta(days=30)])
+    ax5.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax5.xaxis.set_major_formatter()
+    # ax5.set_title(f'Ocean Pressure for buoy {binf["name"][0]}-{int(binf["name"][1]):02d}, at nominal depth of {pdepth:.0f}m.',wrap=True,fontsize=20)
+    ax5.grid()
+    plt.show()
+    # fig5.savefig(f'{figspath}/OPbiasDetermination_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+    # plt.close()
+    # exit(-1)
+    # print('daily', dfdaily.head())
+    # print('GDI',coords[0][0],coords[1][0])
+    # calculate OP bias = mean(median pressures) between two dates clicked on plot MINUS nominal depth which = positive value
+    # print()
+    # # OPbias1 = dfdaily[(dfdaily['Dates']>=coords[0][0]) & (dfdaily['Dates']<=coords[1][0])][pcol+'medians'].mean() - pdepth
+    # OPbias = df[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0])][pcol].median() - pdepth
+    # # OPbias3 = df[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0])][pcol].mode() - pdepth
+    # print('bias from median of L1 pressures btn two clicks',OPbias)
+    # # exit(-1)
+    # # minP = df[ (df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]) & (df[pcol]>25)]
+    # # minP = df[ df[pcol]>25]
+    # # OPbias = pdepth - meanOPbias[pcol]
+    # df[pcol+'corr'] = df[pcol] - OPbias
+    # print(df.head(20))
+    # exit(-1)
+    # print(f'Ocean Pressure bias of {OPbias:.2f}m at {pdepth}m.')
+    # fig5,ax5 = plt.subplots(1,1,figsize=(15,5))
+    # ax5.plot(df['Dates'],-1*df[pcol],'g.',linewidth=1)  # actual depths
+    # # ax5.plot(df['Dates'],-1*df[pcol+'corr'],'r',linewidth=1)   # corrected depths
+    # # ax5.plot(df['Dates'],-1*df[pcol+'corr'],'r',linewidth=1)   # corrected depths
+    # ax5.plot(df['Dates'],-1*df[pcol+'corr'],'r.',linewidth=1)   # corrected depths
+    # ax5.set_title('P1 L1: (green), L1 corr (red)',fontsize=20)
+    # # ax5.plot(dfdaily['Dates'],-1*dfdaily[pcol+'max'],'gx-')          # min of the daily depths (max if + depths)
+    # # line, = ax5.plot(dfdaily['Dates'],-1*dfdaily[pcol+'medians'],'b+-',picker=True,pickradius=3) # making medians pickable
+    # ax5.grid()
+    # ax5.plot([df['Dates'].iloc[0],df['Dates'].iloc[-1]],[-pdepth-OPbias,-pdepth-OPbias],'r--')
+    # ax5.plot([df['Dates'].iloc[0],df['Dates'].iloc[-1]],[-pdepth- -0.27,-pdepth- -0.27],'b--')
+
+    # plt.show()
+    # exit(-1)
+
+    # def annotate(ax,text,x,y):
+    #     text_annotation = Annotation(text,xy=(x,y),xycoords='data')
+    #     ax.add_artist(text_annotation)
+
+    return #df, OPbias
 
 def getRidging(pcol,pdepth,df,bid,figspath):
     binf = BM.BuoyMaster(bid)
@@ -544,10 +618,15 @@ def getRidging(pcol,pdepth,df,bid,figspath):
     fig5.savefig(f'{figspath}/RidgingDetermination_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
     plt.show()
     plt.close()
-    # set ridging to 1 if between two clicks
-    print('line 560 waterice')
-    df.loc[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]),'ridging'] = 1
-    # exit(-1)
+    # set ridging to 1 if between two clicks and shallower than OPlimit
+    fig6,ax6 = plt.subplots(1,1,figsize=(25,5))
+    ax6.plot(df['Dates'],-1*df[pcol],'b.-')
+    ax6.set_xlim([coords[0][0]-20, coords[1][0]+20])
+    ax6.set_grid()
+    plt.show()
+    OPlimit = input('What is the deepest pressure for this ridging? ')
+    df.loc[(df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]) & (df[pcol]<np.float(OPlimit)),'ridging'] = 1
+    # find FWT for the this ridging
     # minP = df[ (df['Dates']>=coords[0][0]) & (df['Dates']<=coords[1][0]) & (df[pcol]>25)]
     # minP = df[ df[pcol]>25]
     # OPbias = pdepth - meanOPbias[pcol]
