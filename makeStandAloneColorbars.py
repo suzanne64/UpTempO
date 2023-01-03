@@ -9,19 +9,18 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from collections import deque
 
-def data_colorbar(num_colors,labels,figsize=(1,3),extend=None,outfile=None):
+def data_colorbar(num_colors,labels,figsize=(1,3),geophys='Temperature',extend=None,outfile=None):
 
     if len(labels) != num_colors:
         print('There should be one color for each label.')
-        return 
+        return
     # if extend =='both':
-        
+
     #     num_colors +=2
     #     labels = deque(labels)
     #     labels.appendleft(' ')
     #     labels.append(' ')
     #     print(labels)
-
     allColorsList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     # allTextColors=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     # trim and convert to cmap
@@ -52,10 +51,10 @@ def data_colorbar(num_colors,labels,figsize=(1,3),extend=None,outfile=None):
     #     )
 
 
-    
+
     # if extend is None:
     cb = mpl.colorbar.ColorbarBase(ax, orientation='horizontal',cmap=ColorsList, ticks=[], extend=extend)
-    cb.ax.set_title(label='Nominal Temperature Sensor Depth (m)', fontsize=16)
+    cb.ax.set_title(label=f'Nominal {geophys} Sensor Depth (m)', fontsize=16)
     # elif extend == 'both':
     #     fig.colorabr(mpl.cm.ScalarMappable(cmap=ColorsList,extend=extend)
     # cb.set_under(allColorsList[0])
@@ -72,14 +71,30 @@ def data_colorbar(num_colors,labels,figsize=(1,3),extend=None,outfile=None):
     plt.savefig(f'UPTEMPO/WebPlots/{outfile}',bbox_inches='tight')
 
     plt.show()
-    
+
 
 # print(mpl.__version__)
 import numpy as np
-num_cycles=13
-print(np.arange(0,num_cycles,6))
-exit(-1)
-data_colorbar(1,['0.28'],outfile='PG-28cm.png',figsize=(1,1))
+# num_cycles=13
+# print(np.arange(0,num_cycles,6))
+# exit(-1)
+
+data_colorbar(3,[0, 4.3, 10],geophys='Temperature',outfile='2019-W9-10m.png',figsize=(6,3))
+# data_colorbar(13,[0, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 35, 40, 50, 60],geophys='Temperature',outfile='2017-05-60m.png',figsize=(6,3))
+# data_colorbar(8,[0, 2.5, 5, 7.5, 10, 15, 20, 25],geophys='Temperature',outfile='2016-04-25m.png',figsize=(6,3))
+
+# data_colorbar(6,[0.51,10,20,30,40,60],geophys='Salinity',outfile='PG-SalHull60m.png',figsize=(6,3))
+# data_colorbar(5,[10,20,30,40,60],geophys='Salinity',outfile='PG-Sal60m.png',figsize=(6,3))
+# data_colorbar(1,[0.38],geophys='Salinity',outfile='PG-SalHull.png',figsize=(6,3))
+# data_colorbar(2,[0.38,5.0],geophys='Salinity',outfile='PG-SalHull5m.png',figsize=(6,3))
+
+# data_colorbar(3,[0.14,0.44,5.0],outfile='PG-SSTHull5m.png',figsize=(6,3))
+# data_colorbar(13,[0.25,2.5,5.0,7.5,10,15,20,25,30,35,40,50,60],outfile='PG-SST60m.png',figsize=(10,3))
+# data_colorbar(14,[0.25,0.57,2.5,5.0,7.5,10,15,20,25,30,35,40,50,60],outfile='PG-SSTHull60m.png',figsize=(10,3))
+# data_colorbar(2,[0.14,0.44],outfile='PG-SSTHull.png',figsize=(6,3))
+# data_colorbar(2,[0.14,5.0],outfile='PG-SST5m.png',figsize=(6,3))
+
+# data_colorbar(1,['0.28'],outfile='PG-28cm.png',figsize=(1,1))
 # data_colorbar(2,['0.0','5'],outfile='PG-5m.png')
 # data_colorbar(5,['0.0','2.5','5.0','7.5','10.0'],outfile='PG-10m.png')
 # data_colorbar(8, ['0','2.5','5','7.5','10','15','20','25'],outfile='PG-25m.png') #,extend='both')
@@ -87,4 +102,3 @@ data_colorbar(1,['0.28'],outfile='PG-28cm.png',figsize=(1,1))
 
 plt.show()
 exit(-1)
-
