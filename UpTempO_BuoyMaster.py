@@ -454,6 +454,9 @@ def BuoyMaster(bid):
                              'name':['2019','5'],
                              'brand':'Marlin-Yug',
                              'imeiabbv':'320940',
+                             'deploymentDate':'10/28/2019',
+                             'deploymentLon':128.6381,
+                             'deploymentLat':85.5843,
                              'vessel':'MOSAiC',
                              'pdepths':[20.,40.,60.],
                              'tdepths':[0.,2.5, 5., 7.5, 10., 15., 20., 25., 30., 35., 40., 50., 60.],
@@ -582,7 +585,8 @@ def BuoyMaster(bid):
                           'P1_ind':6,
                           'vbatt_ind':23},
 
-   
+#  --------------------------2017 buoys-------------------------------------   
+
    '300234064734090':{'notes':'2017 W-5',
                           'name':['2017','W-5'],
 		                  'brand':'Pacific Gyre',
