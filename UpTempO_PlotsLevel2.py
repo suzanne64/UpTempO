@@ -63,7 +63,7 @@ def TimeSeriesPlots(bid,path,quan='Temp'):
     ax.xaxis.set_tick_params(rotation=85,labelsize=14)
 
     if quan == 'Temp':
-        tcols = [col for col in df.columns if col.startswith('T')]
+        tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Tilt')]
         yaxlab='Temperature (C)'
         ax.set_ylim(-2.0,10.0)
 
@@ -96,6 +96,14 @@ def TimeSeriesPlots(bid,path,quan='Temp'):
 
         for ii,pcol in enumerate(pcols):
             ax.plot(df['Date'],df[pcol],'-o',color=cols[ii],ms=1)
+
+    if quan == 'Tilt':
+        tiltcols = [col for col in df.columns if col.startswith('Tilt')]
+        yaxlab='Tilt'
+        # ax.set_ylim(20,40)
+
+        for ii,tiltcol in enumerate(tiltcols):
+            ax.plot(df['Date'],df[tiltcol],'-o',color=cols[ii],ms=1)
 
     datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
     plt.title(buoylab+' ('+bid+') '+yaxlab+' Time Series: '+datelab,fontsize=20)
@@ -204,9 +212,6 @@ def Batt_Sub(bid,path):
     abbv=binf['imeiabbv']
 
     df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
-    print('max submergence',df['SUB'].max(axis=0))
-    print()
-    print()
 
     df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
 
@@ -222,31 +227,84 @@ def Batt_Sub(bid,path):
     ax1.xaxis.set_major_formatter(formatter)
     ax1.xaxis.set_tick_params(rotation=85,labelsize=14)
 
-    if (df['SUB']>1).any():
-        ax1.plot(df['Date'],df['SUB'],'k.-',ms=3)
-    else:
-        ax1.plot(df['Date'],df['SUB']*100,'k.-',ms=3)
-    ax1.set_ylabel('Submergence Percent', color='black')
-    ax1.tick_params(axis='y', labelcolor='black')
-    ax1.set_ylim(-5,105)
+    if 'SUB' in df.columns:
+        if (df['SUB']>1).any():
+            ax1.plot(df['Date'],df['SUB'],'k.-',ms=3)
+        else:
+            ax1.plot(df['Date'],df['SUB']*100,'k.-',ms=3)
+        ax1.set_ylabel('Submergence Percent', color='black')
+        ax1.tick_params(axis='y', labelcolor='black')
+        ax1.set_ylim(-5,105)
 
-    datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
-    plt.title(buoylab+' ('+bid+') '+'Submergence Percent and Battery Voltage:'+datelab,fontsize=20)
+        if 'BATT' not in df.columns:
+            datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
+            plt.title(buoylab+' ('+bid+') '+'Submergence Percent:'+datelab,fontsize=20)
 
-    ax2 = ax1.twinx()
-    ax2.xaxis.set_major_locator(loc)
-    ax2.xaxis.set_major_formatter(formatter)
-    ax2.xaxis.set_tick_params(rotation=85,labelsize=14)
-    ax2.plot(df['Date'],df['BATT'],'r.-',ms=3)
-    ax2.set_ylabel('Battery Voltage (V)', color='red')
-    ax2.tick_params(axis='y', labelcolor='black')
-    ax2.set_ylim(5,20)
-    ax2.grid(axis='y')
-    plt.subplots_adjust(bottom=0.15)
-    # plt.grid(True)
+    if 'BATT' in df.columns:
+        ax2 = ax1.twinx()
+        ax2.xaxis.set_major_locator(loc)
+        ax2.xaxis.set_major_formatter(formatter)
+        ax2.xaxis.set_tick_params(rotation=85,labelsize=14)
+        ax2.plot(df['Date'],df['BATT'],'r.-',ms=3)
+        ax2.set_ylabel('Battery Voltage (V)', color='red')
+        ax2.tick_params(axis='y', labelcolor='black')
+        ax2.set_ylim(5,20)
+        ax2.grid(axis='y')
+        plt.subplots_adjust(bottom=0.15)
+        
+        if 'SUB' not in df.columns:
+            datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
+            plt.title(buoylab+' ('+bid+') '+'Battery Voltage:'+datelab,fontsize=20)
+    if 'SUB' in df.columns and 'BATT' in df.columns:
+        datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
+        plt.title(buoylab+' ('+bid+') '+'Submergence Percent and Battery Voltage:'+datelab,fontsize=20)
     plt.savefig(f'{path}/Submergence{abbv}L2.png')
 
     plt.show()
+
+def TrackMaps(bid,path):
+
+    # ucols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    ucols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+
+    plt=iplots.blankBathMap(cdomain='UpTempO')
+    plt=PF.laloLines(plt,0,lats=[50.,60.,70.,75.,80.,85.])
+
+    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+
+    df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
+
+    for m in range(12):
+        cm=m+1
+        cdat=df['Month'] == cm  #data[data[:,imo] == cm,:]
+        xar,yar=PF.LLtoXY(df['Lat'][cdat],df['Lon'][cdat],0.0)
+        plt.plot(xar,yar,'o',ms=1.5,color='k')
+        plt.plot(xar,yar,'o',ms=1,color=ucols[m])
+
+    binf=BM.BuoyMaster(bid)
+    startdate=f"{df['Month'].iloc[0]:02}/{df['Day'].iloc[0]:02}/{df['Year'].iloc[0]}"
+    enddate  =f"{df['Month'].iloc[-1]:02}/{df['Day'].iloc[-1]:02}/{df['Year'].iloc[-1]}"
+    titout='UpTempO '+binf['name'][0]+' #'+binf['name'][1]+' ('+bid+')  '+startdate+' to '+enddate
+
+    outlabs=['Alaska','Russia','85N','80N','75N','90E','135E','180E','135W','90W']
+    rot1=-20.0
+    suby=100.
+    outpos=[[-1400,2250,0,'w'],[1300.,2250,0,'w'],
+            [110,550.-suby,rot1,'k'],[280,1070-suby,rot1,'k'],[560-suby,1590-suby,rot1,'k'],
+            [700,10,0,'k'],[480,550,45,'k'],[-80,700,90,'k'],[-650,450,-45,'k'],[-900,10,0,'k']]
+    for i,o in enumerate(outlabs):
+        if i <= 1: fs=14
+        else: fs=11
+        plt.text(outpos[i][0],outpos[i][1],outlabs[i],rotation=outpos[i][2],color=outpos[i][3],fontsize=fs)
+
+
+    plt.title(titout,fontsize=12)
+
+    abbv=binf['imeiabbv']
+    print(abbv)
+    plt.savefig(f'{path}/TrackByMonth'+abbv+'L2.png',bbox_inches='tight')
+    plt.show()
+
 
 def transferList(writ):
 

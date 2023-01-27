@@ -22,6 +22,7 @@ from scipy.spatial.distance import pdist
 from scipy.interpolate import interp2d, griddata
 import UpTempO_BuoyMaster as BM
 import statistics
+import itertools
 
 # L1path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL1'
 # L2path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL2'
@@ -46,8 +47,9 @@ def getL1(filename, bid, figspath):
     tdepths = []
     sdepths = []
     ddepths = []
+    tiltdepths = []
     # pcols = []
-    pnum,tnum,snum,dnum = 1,0,0,0
+    pnum,tnum,snum,dnum,tiltnum = 1,0,0,0,0
 
     # convert Level 1 .dat to pandas dataFrame
     with open(filename,'r') as f:
@@ -78,6 +80,11 @@ def getL1(filename, bid, figspath):
                     ddepths.append( float(re.findall("\d+\.?\d+", line)[-1].strip(' ')) )
                     columns.append(f'Dest{dnum}')
                     dnum += 1
+                    
+                if 'Tilt' in line:
+                    tiltdepths.append( float(re.findall("\d+\.?\d+", line)[-1].strip(' ')) )
+                    columns.append(f'Tilt{tiltnum}')
+                    tiltnum += 1
 
                 if 'Sea Level Pressure' in line:
                     columns.append('BP')
@@ -95,16 +102,22 @@ def getL1(filename, bid, figspath):
                 print(data.shape,'in else')
                 break
 
-    print(columns)
-    print('tdepths',tdepths)
-    print()
-    # exit(-1)
+    print(columns,len(columns))
+    print(data.shape)
+    if bid == '300234068719480':
+        data = data[:,:-1]   # 2019 03 has a column of all zeros with no heading name
+    
     df = pd.DataFrame(data=data,columns=columns)
+    # remove columns that are all zeros or all NaNs
+    zerosCols = df.any().to_dict()
+    for key,value in zerosCols.items():
+        if not value:
+            if key not in ['SUB','Dest0']:
+                df.drop(columns=key,inplace=True)
+                print(key)
+                exit(-1)
     print(df.columns)
-    print(df.head(40))
-    print()
-    print(df['Year'])
-    # exit(-1)
+    
     if bid in ['300234066712490','300234064739080']:  # need to sort T cols by depths
         origcols = df.columns.to_list()
         print('originals ',origcols)
@@ -163,11 +176,12 @@ def getL1(filename, bid, figspath):
 
     print(df.columns)
     pcols = [col for col in df.columns if col.startswith('P') and not col.endswith('0')]
-    tcols = [col for col in df.columns if col.startswith('T')]
+    tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Tilt')]
     scols = [col for col in df.columns if col.startswith('S') and 'SUB' not in col]
     dcols = [col for col in df.columns if col.startswith('D') and not col.startswith('Da')]
-    print(dcols)
-    # exit(-1)
+    tiltcols = [col for col in df.columns if col.startswith('Tilt')]
+    print(tiltcols)
+
     
     # invalidate locs if they are obviously erroneous
     if '300234065419120' in bid:  # 2017 05
@@ -175,6 +189,7 @@ def getL1(filename, bid, figspath):
         # interpolate (linearly) to fill
         df['Lat'].interpolate(inplace=True)
         df['Lon'].interpolate(inplace=True)
+        
 
     # invalidate Px zero values (not including P0) and other pressure edits depending...
     for ii,pcol in enumerate(pcols):
@@ -208,7 +223,6 @@ def getL1(filename, bid, figspath):
             if 'T0' not in tcol:
                 df.loc[df[tcol]>6,tcol] = np.NaN
 
-    # correct wrapped temperatures
     if '300234064737080' in bid:  # 2017 04  !!!!!!! ADD bid to WrapCorr list in LEVEL_QC.py
         #True Temperature = reported value - maximum allowed value - minimum allowed value  Wrapped Temps
         maxValue = 62
@@ -241,26 +255,60 @@ def getL1(filename, bid, figspath):
         df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
         df.loc[(df['Dates']>dt.datetime(2019,4,30)) & (df['T0']<-20),'T0'] = np.nan
 
+    if '300234068514830' in bid:  # 2019 01
+        # df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
+        # df.reset_index(inplace=True)
+        # df.loc[(df['P1']< 8),'P1'] = np.nan
+        print(df['T0'].max())
+        print(df['T0'].min())
+        maxValue = 61.9
+        minValue = -20
+        df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
+        for tcol in tcols:
+            if tcol != 'T0':
+                df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol] = np.nan
+                df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol] = np.nan
+
+    # more pressure editing, ORGANIZE this.
     if '300234060320940' in bid:  # 2019 05
         for pcol in pcols:
             df.loc[(df[pcol]<0),pcol] = np.nan
-        # correct depths for sea level pressure variations    
-        pcolsSLP = [f'{col}SLP' for col in pcols]
-        for ii,pco in enumerate(zip(pcolsSLP,pcols)):
-            fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
-            df[pco[0]] = np.NaN
-            df.loc[~np.isnan(df['BP']),pco[0]] = df.loc[~np.isnan(df['BP']),pco[1]] - (df.loc[~np.isnan(df['BP']),'BP'] - 1013)*0.01
-            ax8.plot(df['Dates'],-1*df[pco[0]],'.')
-            ax8.set_title(f'Ocean Pressure: original corrected for SLP with BP data, {pdepths[ii]}')
-            ax8.grid()
-            plt.savefig(f'{figspath}/OPcorrectedSLP_{pdepths[ii]}.png')
-        plt.show()
-        df.drop(columns=pcolsSLP,inplace=True)
+    
+    if '300234060320930' in bid:  # 2019 04
+        df.loc[(df['P1']<14)] = np.nan
+        df = df.loc[(df['Dates']<=dt.datetime(2020,8,1))]
 
+    if '300234068719480' in bid:  # 2019 03
+        for pcol in pcols:
+            df.loc[(df[pcol]<0),pcol] = np.nan
+            
+    if '300234068514830' in bid:  # 2019 01
+        df.loc[(df['P1']==0.0),'P1'] = np.nan
+        df.loc[(df['P1']>100),'P1'] = np.nan 
+        df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'] = np.nan
+         
+    # check influence of 'correcting' for SLP
+    # if bid in ['300234060320940','300234060320930']:  # 2019 04,05
+    #     # correct depths for sea level pressure variations    
+    #     pcolsSLP = [f'{col}SLP' for col in pcols]
+    #     print(pcols)
+    #     print(pcolsSLP)
+    #     for ii,pco in enumerate(zip(pcolsSLP,pcols)):
+    #         fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+    #         df[pco[0]] = np.NaN
+    #         df.loc[~np.isnan(df['BP']),pco[0]] = df.loc[~np.isnan(df['BP']),pco[1]] - (df.loc[~np.isnan(df['BP']),'BP'] - 1013)*0.01
+    #         ax8.plot(df['Dates'],-1*df[pco[1]],'r.')  # orig press
+    #         ax8.plot(df['Dates'],-1*df[pco[0]],'b.')                # corr press
+    #         ax8.set_title(f'Ocean Pressure: original (r) corrected for SLP with BP data (b), {pdepths[ii]}')
+    #         ax8.grid()
+    #         plt.savefig(f'{figspath}/OPcorrectedSLP_{pdepths[ii]}.png')
+    #     # plt.show()
+    #     df.drop(columns=pcolsSLP,inplace=True)
+        
     # set unseasonably warm temperatures to invalid
-    for tcol in tcols:
-        df.loc[(df[tcol]>20),tcol] = np.nan
-        df.loc[((df['Month']>=10) | (df['Month']<=5)) & (df[tcol]>6), tcol] = np.nan
+    # for tcol in tcols:
+    #     df.loc[(df[tcol]>20),tcol] = np.nan
+    #     df.loc[((df['Month']>=10) | (df['Month']<=5)) & (df[tcol]>6), tcol] = np.nan
         
     # set out of range submergence values to invalid
     if 'SUB' in df.columns:
@@ -287,8 +335,8 @@ def getL1(filename, bid, figspath):
             if col.startswith('P'):
                 ax.plot(df['Dates'],-1*df[col],'.')
             elif 'Lat' in col:
-                # if #bid in ['300234064737080','300234065419120']:
-                df.loc[(df['Lon'])<0,'Lon'] += 360
+                if bid in ['300234064737080','300234065419120','300234068514830']:  # 2017-04, 2017-05, 2019-01
+                    df.loc[(df['Lon'])<0,'Lon'] += 360
                 ax.plot(df['Lon'],df[col],'.')
                 ax.plot(df['Lon'].iloc[0],df[col].iloc[0],'go')
                 ax.plot(df['Lon'].iloc[-1],df[col].iloc[-1],'ro')
@@ -298,22 +346,22 @@ def getL1(filename, bid, figspath):
             # elif col.startswith('T'):                
                 for ii,tcol in enumerate(tcols):
                     # fig,ax = plt.subplots(1,1,figsize=(15,5))
-                    ax.plot(df['Dates'],df[tcol],'o',color=colorList[ii],ms=1)
+                    ax.plot(df['Dates'],df[tcol],'*',color=colorList[ii],ms=1)
                     # ax.set_title(tcol)
                     # plt.show()
                     # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
                     # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
             elif 'Dest0' in col:
                 for ii,dcol in enumerate(dcols):
-                    print(ii,dcol)
                     ax.plot(df['Dates'],-1*df[dcol],'o',color=colorList[ii],ms=1)
-                    # ax.set_title(tcol)
-                    # plt.show()
-                    # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-                    # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+            elif 'Tilt0' in col:
+                for ii,tiltcol in enumerate(tiltcols):
+                    ax.plot(df['Dates'],df[tiltcol],'o-',color=colorList[ii],ms=1)
             elif col.startswith('T') and 'T0' not in col:
                 remcols.append(col)
             elif col.startswith('Dest') and 'Dest0' not in col:
+                remcols.append(col)
+            elif col.startswith('Tilt') and 'Tilt0' not in col:
                 remcols.append(col)
             else:
                 ax.plot(df['Dates'],df[col],'.')
@@ -340,7 +388,7 @@ def getL1(filename, bid, figspath):
         except:
             os.remove(f'{figspath}/L1_{binf["name"][0]}_{binf["name"][1]}_{col}.png')
 
-    return df,pdepths,tdepths,sdepths
+    return df,pdepths,tdepths,sdepths,ddepths,tiltdepths
 
 def getL2(filename, bid):
     print('L2 file name:',filename)
@@ -578,24 +626,27 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
         ice[ice==251] = np.nan  # pole_hole_mask, flags are not scaled
         icesrc = 'NSIDC-g02202'
 
-        if '300234060320940' in bid:
+        icemapDate = {'300234060320940':['20200301','20200601','20200801'],
+                      '300234060320930':['20200301','20200601','20200731']}
+        if bid in icemapDate.keys():
              # check ice cover
-            if strdate in ['20200301','20200601','20200801']:
-                print(strdate)
-                fig2, ax2 = plt.subplots(1,figsize=(8.3,10))
-                ax2 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
-                ax2.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
-                kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
-                ch = ax2.contourf(x,y,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
-                                  transform=ccrs.Stereographic(**kw))   #use either colors or cmap
-                ax2.plot(blon,blat,'ro',ms=12,transform=ccrs.PlateCarree())
-                ax2.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45),color='gray')
-                ax2.add_feature(cfeature.LAND,facecolor='tan')
-                ax2.coastlines(resolution='50m',linewidth=0.5,color='black')
-
-                fig2.colorbar(ch,ax=ax2)
-                ax2.set_title(f'Ice map on {strdate}, Buoy Location red dot')
-                fig2.savefig(f'{figspath}/IceMap_{strdate}.png')
+            if strdate in icemapDate[bid]:
+                if not os.path.isfile(f'{figspath}/IceMap_{strdate}.png'):
+                    print(strdate)
+                    fig2, ax2 = plt.subplots(1,figsize=(8.3,10))
+                    ax2 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
+                    ax2.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
+                    kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
+                    ch = ax2.contourf(x,y,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
+                                      transform=ccrs.Stereographic(**kw))   #use either colors or cmap
+                    ax2.plot(blon,blat,'ro',ms=12,transform=ccrs.PlateCarree())
+                    ax2.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45),color='gray')
+                    ax2.add_feature(cfeature.LAND,facecolor='tan')
+                    ax2.coastlines(resolution='50m',linewidth=0.5,color='black')
+    
+                    fig2.colorbar(ch,ax=ax2)
+                    ax2.set_title(f'Ice map on {strdate}, Buoy Location red dot')
+                    fig2.savefig(f'{figspath}/IceMap_{strdate}.png')
 
     else:                                # 0081 (nrt/most recent)
         icefile = f'{int(byear)}/NSIDC0081_SEAICE_PS_N25km_{strdate}_v2.0.nc'
@@ -1023,7 +1074,6 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
                   'Marlin-Yug':  {20:7,40:14,60:26,80:42},
                   'MetOcean':    {20:4,40: 8,60:12,80:12}
                   }
- 
     # if len(Pcols)>1:
     # # compute all the spikes, according to table in Level2_QC_doc.php
     #     for ii,pcol in enumerate(Pcols):
@@ -1036,6 +1086,7 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
     # else:
     
     for ii,pcol in enumerate(Pcols):
+        df1['mask'] = df1[pcol].isna()  # mask because interpolate interpolates through all the nans
         fig,ax = plt.subplots(2,1,figsize=(15,5),sharex=True)
         df1['dh'] = df1['Dates'].diff().apply(lambda x: x/np.timedelta64(1,'h'))
         limit = min(spikeLimit[brand].keys(), key=lambda key: abs(key-pdepths[ii]))
@@ -1046,8 +1097,10 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
         ax[1].plot(df1['Dates'],-1*df1[pcol],'r.-')
         df1.loc[(df1['dPdh'].abs()>spikeLimit[brand][limit]),pcol] = np.nan
         ax[1].plot(df1['Dates'],-1*df1[pcol],'b.-')
-        # interpolat through nans
+        # interpolat through nans, mask out original nans
         df1[pcol].interpolate(method='linear',inplace=True)
+        df1.loc[(df1['mask']),pcol] = np.nan
+
         ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[spikeLimit[brand][limit],spikeLimit[brand][limit]],'--',color='gray')
         ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1*spikeLimit[brand][limit],-1*spikeLimit[brand][limit]],'--',color='gray')
         ax[0].set_xlim([df1['Dates'].iloc[0],df1.loc[(df1['dPdh'].last_valid_index()),'Dates']])  
@@ -1056,7 +1109,7 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
         plt.savefig(f'{figspath}/{pcol}spikes.png')    
         plt.show()
         df1.drop(['dPdh','dh'],axis=1,inplace=True)
-            
+    df1.drop(columns=['mask'],inplace=True)
     # if '300234063991680' in bid:  # 2016 07
     #     df1.loc[(df1['dOP60']>4),Pcols] = np.nan
     #     df1.loc[(df1['dOP60']>4),[col for col in df1.columns if col.startswith('dOP')]] = np.nan
@@ -1091,7 +1144,7 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
 
 def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike filtering algorithm in action" in Level2_QC_doc.php
     # get columns that might need spike removal
-    Tcols = [col for col in df1.columns if col.startswith('T')]
+    Tcols = [col for col in df1.columns if col.startswith('T') and not col.startswith('Tilt')]
     Dcols = [col for col in df1.columns if col.startswith('D') and not col.startswith('Da') and not col.startswith('Dest')]
     colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
  
@@ -1210,16 +1263,56 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         fig.savefig(f'{figspath}/Tspikes{col[0][1:]}.png')
         # plt.show()
   
-    print('line 1050 water Ice')
-    print(df1.columns)
     df1.drop([col for col in df1.columns if col.startswith('spike')],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'max' in col],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'min' in col],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'range' in col],axis=1,inplace=True)
-    print('line 1056 water Ice')
-    print(df1.columns)
-
+ 
     return df1
+
+def hangingVertical(df1,pdepths,bid,figspath):
+    binf = BM.BuoyMaster(bid)
+    dfday = df1.groupby(pd.Grouper(freq='2D',key='Dates')).mean()
+    dfday.reset_index(inplace=True)
+    df1['hangingVert'] = 0
+    
+    Pcols = [col for col in df1.columns if col.startswith('P')]
+    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+
+    fig,ax = plt.subplots(len(Pcols),1,figsize=(15,5*len(Pcols)),sharex=True)
+    # secax=ax.twin()
+    for ii,pcol in enumerate(Pcols):
+        dfday[f'{pcol}anom'] = dfday[pcol].sub(pdepths[ii])
+        ax[ii].plot(df1['Dates'],-1*df1[pcol]+pdepths[ii],'.-',color='lightgray')
+        ax[ii].plot(dfday['Dates'],-1*dfday[f'{pcol}anom'],'r.-')
+        ax[ii].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[0,0],'b')
+        ax[ii].grid()
+        dfday[f'{pcol}sign'] = dfday[f'{pcol}anom'].apply(lambda x: -1*np.sign(x))
+        print('line 347',pcol,dfday.loc[(dfday[f'{pcol}sign'][::-1].idxmax()+1),'Dates'])
+        df1.loc[(df1['Dates']>dfday.loc[(dfday[f'{pcol}sign'][::-1].idxmax()+1),'Dates']),'hangingVert'] = 1
+        ax[ii].plot(dfday['Dates'],dfday[f'{pcol}sign'],'k')
+        ax[ii].plot(df1['Dates'],df1['hangingVert'],'.',color='gold')
+        ax[ii].set_title(f'{binf["name"][0]} {binf["name"][1]} {pcol}: pressure(gray), 2D mean(r), anomSign(k), hangingVertical(gold)')
+       # plt.show()
+        # exit(-1)
+        # ax[ii].set_title(f'Pressure(gray), Pressure gradients, dP/hr(b), nominal depth {pdepths[ii]}',fontsize=16)
+        # ax[ii].set_ylabel('Pressures',color='lightgray',fontsize=14)
+        # ax[ii].spines['left'].set_color('lightgray')
+        # secax=ax[ii].twinx()
+        # secax.plot(df1['Dates'],df1[f'd{pcol}dh'],'b.-')
+        # secax.spines['right'].set_color('blue')
+        # secax.grid()
+        # secax.set_ylabel('dP/dhr',color='b',fontsize=14)
+        # secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+        # secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    plt.savefig(f'{figspath}/WARM_hangingVertical.png')
+    plt.show()
+    # exit(-1)
+    
+    
+    
+    return df1
+
 
 # def makeL2(df,bid,path):
 #     binf = BM.BuoyMaster(bid)
