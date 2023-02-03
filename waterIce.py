@@ -176,12 +176,11 @@ def getL1(filename, bid, figspath):
 
     print(df.columns)
     pcols = [col for col in df.columns if col.startswith('P') and not col.endswith('0')]
-    tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Tilt')]
+    tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Ta') and not col.startswith('Tilt')]
     scols = [col for col in df.columns if col.startswith('S') and 'SUB' not in col]
     dcols = [col for col in df.columns if col.startswith('D') and not col.startswith('Da')]
     tiltcols = [col for col in df.columns if col.startswith('Tilt')]
-    print(tiltcols)
-
+    print(tcols)
     
     # invalidate locs if they are obviously erroneous
     if '300234065419120' in bid:  # 2017 05
@@ -273,6 +272,7 @@ def getL1(filename, bid, figspath):
     if '300234060320940' in bid:  # 2019 05
         for pcol in pcols:
             df.loc[(df[pcol]<0),pcol] = np.nan
+        df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
     
     if '300234060320930' in bid:  # 2019 04
         df.loc[(df['P1']<14)] = np.nan
@@ -287,6 +287,22 @@ def getL1(filename, bid, figspath):
         df.loc[(df['P1']>100),'P1'] = np.nan 
         df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'] = np.nan
          
+    if '300234061160500' in bid:  # 2020 01
+        # invalidate bad pressures
+        for pcol in pcols:
+            df.loc[(df[pcol]<0),pcol] = np.nan
+        df.loc[(df['P1']>25) | (df['P1']<5),'P1'] = np.nan  
+        df.loc[(df['Dates']>dt.datetime(2021,1,12)) & (df['Dates']<dt.datetime(2021,1,19,6,0,0)),'P1'] = np.nan
+        # remove Ta if data are all the same value
+        ta = df['Ta'].to_numpy()
+        if (ta[0] == ta).all():
+            df.drop(columns=['Ta'],inplace=True)          
+        # remove Dest columns as they don't tell us much.
+        df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
+        # invalidate low, constant temps
+        for tcol in tcols:
+           df.loc[(df[tcol]<=-20),tcol] = np.nan
+
     # check influence of 'correcting' for SLP
     # if bid in ['300234060320940','300234060320930']:  # 2019 04,05
     #     # correct depths for sea level pressure variations    
@@ -313,8 +329,11 @@ def getL1(filename, bid, figspath):
     # set out of range submergence values to invalid
     if 'SUB' in df.columns:
         subcount = df['SUB'].value_counts()
-        if 100.0 not in subcount or subcount[1.0] > subcount[100.0]:
-            df['SUB'] *= 100.
+        try:
+            if 100.0 not in subcount or subcount[1.0] > subcount[100.0]:
+                df['SUB'] *= 100.
+        except:
+            pass
         df.loc[(df['SUB']<0.),'SUB'] = np.NaN
         df.loc[(df['SUB']>100.),'SUB'] = np.NaN   # WHY CAN'T I DO OR???   gdi
 
@@ -351,13 +370,15 @@ def getL1(filename, bid, figspath):
                     # plt.show()
                     # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
                     # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+            elif 'Ta' in col:
+                ax.plot(df['Dates'],-1*df[col],'.')
             elif 'Dest0' in col:
                 for ii,dcol in enumerate(dcols):
                     ax.plot(df['Dates'],-1*df[dcol],'o',color=colorList[ii],ms=1)
             elif 'Tilt0' in col:
                 for ii,tiltcol in enumerate(tiltcols):
                     ax.plot(df['Dates'],df[tiltcol],'o-',color=colorList[ii],ms=1)
-            elif col.startswith('T') and 'T0' not in col:
+            elif col.startswith('T') and 'T0' not in col and 'Ta' not in col:
                 remcols.append(col)
             elif col.startswith('Dest') and 'Dest0' not in col:
                 remcols.append(col)
@@ -791,10 +812,11 @@ def getBuoyBathyPoint(df):
     ds = xr.open_dataset(filegeb)
     # gebco has longitudes east 
     # df.loc[(df['Lon']<0),'Lon'] += 360
+    df.loc[(df['Lon']>180),'Lon'] -= 360
     print('min lon, max lat buoy',df['Lon'].min(),df['Lon'].max(),df['Lat'].min(),df['Lat'].max())
     
     bathy = ds.sel(lon=slice(df['Lon'].min(),df['Lon'].max()),lat=slice(df['Lat'].min(),df['Lat'].max())).load()
-    print(bathy.lon.shape)
+    print('line 817',bathy.lon.shape)
     f = interp2d(bathy.lon,bathy.lat,bathy.elevation)
     for ii,row in df.iterrows():
         df['bathymetry'].iloc[ii] = f(df['Lon'].iloc[ii],df['Lat'].iloc[ii])
@@ -1243,14 +1265,18 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         # secax.set_ylim([-10,10])
         ax.plot(df1['Dates'],df1[f'T{col[0][1:]}max'],'g.-')
         ax.plot(df1['Dates'],df1[f'T{col[0][1:]}min'],'g.-')
-        ax.set_ylim([np.nanmin( [min(-1*df1[f'T{col[0][1:]}range'].div(2)),min(df1[f'spike{col[0][1:]}']), min(df1[f'T{col[0][1:]}'])]),
-                     np.nanmax( [max(   df1[f'T{col[0][1:]}range'].div(2)),max(df1[f'spike{col[0][1:]}']), max(df1[f'T{col[0][1:]}'])])])
+        minYs = [min(-1*df1[f'T{col[0][1:]}range'].div(2)), min(df1[f'spike{col[0][1:]}']), min(df1[f'T{col[0][1:]}'])]
+        minY = np.nanmin([x for x in minYs if x != -np.inf])
+        maxYs = [max(   df1[f'T{col[0][1:]}range'].div(2)), max(df1[f'spike{col[0][1:]}']), max(df1[f'T{col[0][1:]}'])]
+        maxY = np.nanmin([x for x in maxYs if x != -np.inf])
+        print()
+        ax.set_ylim(minY,maxY)
             
         # 3. use range (Tmax-Tmin) to set allowable thresholds for pos/neg spikes
         secax.plot(df1['Dates'],df1[f'T{col[0][1:]}range'].div(2),'r')        
         secax.plot(df1['Dates'],-1*df1[f'T{col[0][1:]}range'].div(2),'b')   
-        secax.set_ylim([np.nanmin( [min(-1*df1[f'T{col[0][1:]}range'].div(2)),min(df1[f'spike{col[0][1:]}']), min(df1[f'T{col[0][1:]}'])]),
-                        np.nanmax( [max(   df1[f'T{col[0][1:]}range'].div(2)),max(df1[f'spike{col[0][1:]}']), max(df1[f'T{col[0][1:]}'])])])
+        
+        secax.set_ylim(minY,maxY)
         ax.set_xlim([df1['Dates'].iloc[0],df1.loc[(df1[f'T{col[0][1:]}range'].last_valid_index()),'Dates']])
         ax.set_title(f'Finding Spikes for {col[0]}: temperature(k), temperature range(g), spikes(r/b), half range(r/b)')
         # plt.show()
