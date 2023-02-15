@@ -245,7 +245,7 @@ def getL1(filename, bid, figspath):
 
     if '300234067936870' in bid:  # 2019 W-9
         df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
-        df.reset_index(inplace=True)
+        df.reset_index(drop=True,inplace=True)
         df.loc[(df['P1']< 8),'P1'] = np.nan
         print(df['T0'].max())
         print(df['T0'].min())
@@ -253,6 +253,7 @@ def getL1(filename, bid, figspath):
         minValue = -5
         df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
         df.loc[(df['Dates']>dt.datetime(2019,4,30)) & (df['T0']<-20),'T0'] = np.nan
+        # we need to find pdepths for this buoy. It's NOT 10dbar
 
     if '300234068514830' in bid:  # 2019 01
         # df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
@@ -303,6 +304,98 @@ def getL1(filename, bid, figspath):
         for tcol in tcols:
            df.loc[(df[tcol]<=-20),tcol] = np.nan
 
+    if '300534062898720' in bid: # 2022 01
+        df.loc[(df['Lon']>0) | (df['Lat']<70) | (df['Lat']>85),:] = np.nan
+        df.loc[(df['P1']>20),'P1'] = np.nan
+        for scol in scols:
+            df.loc[(df[scol]<10) | (df[scol]>40),scol] = np.nan
+        for tcol in tcols:
+            df.loc[(df[tcol]==0.0),tcol] = np.nan
+            df.loc[(df[tcol]==-0.0001),tcol] = np.nan
+            
+    if '300534062897730' in bid: # 2022 02        
+        print(df['T1'].max())
+        print(df['T1'].min())
+        maxValue = 99.9
+        minValue = -5
+        df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
+        # invalidate salinities after max salinity
+        imax = df['S0'].idxmax()
+        df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<10),'S0'] = np.nan
+
+    if '300534063704980' in bid: # 2022 03 
+        pass  
+     
+    if '300534063807110' in bid: # 2022 04  
+        df.loc[(df['P1']>15),'P1'] = np.nan     
+        for tcol in tcols:
+            df.loc[(df[tcol]==0.0),tcol] = np.nan
+            df.loc[(df[tcol]==-0.0001),tcol] = np.nan
+        for scol in scols:
+            df.loc[(df[scol]>150),scol] = np.nan
+            df.loc[(df[scol]<12),scol] = np.nan
+ 
+    if '300534063803100' in bid: # 2022 05
+        for pcol in pcols:
+            df.loc[(df[pcol]<2),pcol] = np.nan
+            df.loc[(df[pcol]>70),pcol] = np.nan
+        for tcol in tcols:
+           df.loc[(df[tcol]>30),tcol] = np.nan
+           df.loc[(df[tcol]<-10),tcol] = np.nan
+        for scol in scols:
+           df.loc[(df[scol]<20),scol] = np.nan
+    
+    if '300534062892700' in bid: # 2022 06
+        df.loc[(df['T1']==0),'T1'] = np.nan
+        df.loc[(df['S0']<20),'S0'] = np.nan
+        
+    if '300534062894700' in bid: # 2022 07
+        print(df['T1'].max())
+        print(df['T1'].min())
+        maxValue = 99.9
+        minValue = -5
+        df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
+        # invalidate salinities after max salinity
+        imax = df['S0'].idxmax()
+        df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<5),'S0'] = np.nan
+
+    if '300534062894740' in bid: # 2022 08
+        df.loc[(df['Lat']<70),:] = np.nan
+        df.loc[(df['P1']>60),'P1'] = np.nan
+        df.loc[(df['P1']<0),'P1'] = np.nan
+        df.loc[(df['T1']<-10),'T1'] = np.nan
+        df.loc[(df['T1']>30),'T1'] = np.nan
+        df.loc[(df['S0']<10),'S0'] = np.nan
+
+    if '300534062896730' in bid: # 2022 09
+        for pcol in pcols:
+            df.loc[(df[pcol]<10),pcol] = np.nan
+            df.loc[(df[pcol]>80),pcol] = np.nan
+        for tcol in tcols:
+           df.loc[(df[tcol]>10),tcol] = np.nan
+        for scol in scols:
+            df.loc[(df[scol]<20),scol] = np.nan
+            df.loc[(df[scol]>40),scol] = np.nan
+        imax = df['S0'].idxmax()
+        df['S0'].iloc[imax+1:] = np.nan
+                
+    if '300534062894730' in bid: # 2022 10
+        df.loc[(df['P1']>60),'P1'] = np.nan
+        df.loc[(df['P1']<0),'P1'] = np.nan
+        df.loc[(df['T1']>10),'T1'] = np.nan
+        df.loc[(df['T1']<-10),'T1'] = np.nan
+        df.loc[(df['S0']<10),'S0'] = np.nan
+        
+    if '300534062893700' in bid: # 2022 11
+        df.loc[(df['P1']>70),'P1'] = np.nan
+        df.loc[(df['T1']>10),'T1'] = np.nan
+    
+    
+    # drop a column if all values are NaN
+    df.dropna(axis=0,how='all',inplace=True)
+    
     # check influence of 'correcting' for SLP
     # if bid in ['300234060320940','300234060320930']:  # 2019 04,05
     #     # correct depths for sea level pressure variations    
@@ -354,13 +447,17 @@ def getL1(filename, bid, figspath):
             if col.startswith('P'):
                 ax.plot(df['Dates'],-1*df[col],'.')
             elif 'Lat' in col:
-                if bid in ['300234064737080','300234065419120','300234068514830']:  # 2017-04, 2017-05, 2019-01
+                if bid in ['300234064737080','300234065419120','300234068514830','300534063807110','300534062896730']:  
+                    # 2017-04, 2017-05, 2019-01 2022-04 2022-09
                     df.loc[(df['Lon'])<0,'Lon'] += 360
                 ax.plot(df['Lon'],df[col],'.')
                 ax.plot(df['Lon'].iloc[0],df[col].iloc[0],'go')
                 ax.plot(df['Lon'].iloc[-1],df[col].iloc[-1],'ro')
             elif 'Lon' in col:
                 remcols.append(col)
+            elif 'S0' in col:
+                for ii,scol in enumerate(scols):
+                    ax.plot(df['Dates'],df[scol],'*',color=colorList[ii],ms=1)
             elif 'T0' in col:
             # elif col.startswith('T'):                
                 for ii,tcol in enumerate(tcols):
@@ -378,6 +475,8 @@ def getL1(filename, bid, figspath):
             elif 'Tilt0' in col:
                 for ii,tiltcol in enumerate(tiltcols):
                     ax.plot(df['Dates'],df[tiltcol],'o-',color=colorList[ii],ms=1)
+            elif col.startswith('S') and 'S0' not in col and 'SUB' not in col:
+                remcols.append(col)
             elif col.startswith('T') and 'T0' not in col and 'Ta' not in col:
                 remcols.append(col)
             elif col.startswith('Dest') and 'Dest0' not in col:
@@ -1298,28 +1397,51 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
 
 def hangingVertical(df1,pdepths,bid,figspath):
     binf = BM.BuoyMaster(bid)
-    dfday = df1.groupby(pd.Grouper(freq='2D',key='Dates')).mean()
-    dfday.reset_index(inplace=True)
-    df1['hangingVert'] = 0
+    # rFile = input('Do you want to READ melting time periods file? : y for Yes, n for No ')
+    # if rFile.startswith('y'):
+    meltFile = f'/Users/suzanne/Google Drive/UpTempO/level2/warmMelting{binf["name"][0]}-{binf["name"][1]}.csv'
+    dfm = pd.read_csv(meltFile)
+    dfm['dt1'] = pd.to_datetime(dfm['dt1'],format='%m/%d/%y %H:%M')
+    dfm['dt2'] = pd.to_datetime(dfm['dt2'],format='%m/%d/%y %H:%M')
+    dfm.dropna(axis=0,how='all',inplace=True)
+    print(dfm)
+    # exit(-1)
+    # dfday = df1.groupby(pd.Grouper(freq='2D',key='Dates')).mean()
+    # dfday.reset_index(inplace=True)
+    # df1['hangingVert'] = 0
     
     Pcols = [col for col in df1.columns if col.startswith('P')]
     colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
     fig,ax = plt.subplots(len(Pcols),1,figsize=(15,5*len(Pcols)),sharex=True)
-    # secax=ax.twin()
-    for ii,pcol in enumerate(Pcols):
-        dfday[f'{pcol}anom'] = dfday[pcol].sub(pdepths[ii])
-        ax[ii].plot(df1['Dates'],-1*df1[pcol]+pdepths[ii],'.-',color='lightgray')
-        ax[ii].plot(dfday['Dates'],-1*dfday[f'{pcol}anom'],'r.-')
-        ax[ii].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[0,0],'b')
-        ax[ii].grid()
-        dfday[f'{pcol}sign'] = dfday[f'{pcol}anom'].apply(lambda x: -1*np.sign(x))
-        print('line 347',pcol,dfday.loc[(dfday[f'{pcol}sign'][::-1].idxmax()+1),'Dates'])
-        df1.loc[(df1['Dates']>dfday.loc[(dfday[f'{pcol}sign'][::-1].idxmax()+1),'Dates']),'hangingVert'] = 1
-        ax[ii].plot(dfday['Dates'],dfday[f'{pcol}sign'],'k')
-        ax[ii].plot(df1['Dates'],df1['hangingVert'],'.',color='gold')
-        ax[ii].set_title(f'{binf["name"][0]} {binf["name"][1]} {pcol}: pressure(gray), 2D mean(r), anomSign(k), hangingVertical(gold)')
-       # plt.show()
+    print(Pcols[0])
+
+    secax=ax.twinx()
+    for ii, axi in enumerate(fig.axes):
+        if ii<len(fig.axes):
+            print(ii)
+            print(Pcols[ii-1])
+            print('length',len(fig.axes))
+            print(axi)
+        # for ii, (axi,pcol) in enumerate(zip(ax,Pcols)):
+            # dfday[f'{Pcols[ii]}anom'] = dfday[Pcols[ii]].sub(pdepths[ii])
+            axi.plot(df1['Dates'],-1*df1[Pcols[ii-1]],'.-',color='b')
+            for jj,row in dfm.iterrows():
+                secax.plot([dfm['dt1'].iloc[jj],dfm['dt2'].iloc[jj]],[dfm['hanging'].iloc[jj],dfm['hanging'].iloc[jj]],color='red')
+            secax.spines['right'].set_color('red')
+            secax.set_ylabel('hanging vertical indicator',color='red',fontsize=14)
+            secax.set_ylim([-0.2,1.2])
+            # axi.plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[0,0],'b')
+            axi.grid()
+            # dfday[f'{Pcols[ii]}sign'] = dfday[f'{Pcols[ii]}anom'].apply(lambda x: -1*np.sign(x))
+            # print('line 347',Pcols[ii],dfday.loc[(dfday[f'{Pcols[ii]}sign'][::-1].idxmax()+1),'Dates'])
+            # df1.loc[(df1['Dates']>dfday.loc[(dfday[f'{Pcols[ii]}sign'][::-1].idxmax()+1),'Dates']),'hangingVert'] = 1
+            # axi.plot(dfday['Dates'],dfday[f'{Pcols[ii]}sign'],'k')
+            # axi.plot(df1['Dates'],df1['hangingVert'],'.',color='gold')
+            axi.set_title(f'{binf["name"][0]} {binf["name"][1]} {Pcols[ii-1]}(blue), hangingVertical(red)')
+            axi.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            axi.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+           # plt.show()
         # exit(-1)
         # ax[ii].set_title(f'Pressure(gray), Pressure gradients, dP/hr(b), nominal depth {pdepths[ii]}',fontsize=16)
         # ax[ii].set_ylabel('Pressures',color='lightgray',fontsize=14)
@@ -1334,9 +1456,6 @@ def hangingVertical(df1,pdepths,bid,figspath):
     plt.savefig(f'{figspath}/WARM_hangingVertical.png')
     plt.show()
     # exit(-1)
-    
-    
-    
     return df1
 
 

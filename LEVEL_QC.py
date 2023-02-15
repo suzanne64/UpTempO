@@ -57,7 +57,8 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2/'
 # bid = '300234060320930'   # 2019 04  Mosaic
 # bid = '300234068719480'   # 2019 03
 # bid = '300234068514830'   # 2019 01  SIZRS short string OP at 20m (not the normal 25m)
-bid = '300234061160500'   # 2020 01   3 pres Mirai by Marlin-Yug
+# bid = '300234061160500'   # 2020 01   3 pres Mirai by Marlin-Yug
+bid = '300534060649670'   # 2021 01   4 pres
 
 
 # buoys already converted and used for writing/testing code. 
@@ -140,7 +141,8 @@ if '300234061160500' in bid:  # 2020 01 SIZRS
 
 print('level 1 file',level1File)
 f1 = open(level1File,'r')
-if bid in ['300234064737080','300234062491420','300234064739080','300234068514830']:
+if bid in ['300234064737080','300234062491420','300234064739080','300234068514830','300534062897730','300534062894700']:
+    ########    add the otherw=s...      2022-02, 2022-07
     WrapCorr = 'YES'
 else:
     WrapCorr = 'NO'
@@ -156,7 +158,7 @@ Pcols = [col for col in df1.columns if col.startswith('P')]
 print('Pcols',Pcols)
 print(df1['Lon'].max())
 print(df1['Lat'].min())
-
+    
 # find pressure spikes and invalidate them, interpolate through
 print(binf['brand'])
 df1 = removePspikes(bid,df1,pdepths,figspath,brand=binf['brand'])
@@ -290,22 +292,27 @@ if len(pdepths)>0:
         dfbias['Pcols'] = Pcols
         dfbias.to_csv(biasname,float_format='%.2f')
     else:
-        dfbias = pd.read_csv(biasname)
-        OPbias = dfbias['OPbias']
-        # plot pressures before and after, to check.  Apply the bias
-        for ii,pcol in enumerate(dfbias['Pcols']):
-            fig,ax = plt.subplots(1,1,figsize=(15,5))
-            ax.plot(df1['Dates'],-1*df1[pcol],'r.')
-            df1[pcol] -= dfbias['OPbias'].iloc[ii]
-            ax.plot(df1['Dates'],-1*df1[pcol],'b.')
-            ax.grid()
-            ax.set_title(f'{pcol} before(r) and after(b) bias correction of {dfbias["OPbias"].iloc[ii]:.2f}')
-            fig.savefig(f'{figspath}/{pcol}_biasCorrection.png')
-            plt.show()
+        if bid == '300234067936870':   # 2019 W9
+            dfbias = pd.DataFrame(columns=['pdepths','OPbias'])
+            dfbias['pdepths'] = pdepths
+            dfbias['OPbias'] = 0.0
+        else:
+            dfbias = pd.read_csv(biasname)
+            OPbias = dfbias['OPbias']
+            # plot pressures before and after, to check.  Apply the bias
+            for ii,pcol in enumerate(dfbias['Pcols']):
+                fig,ax = plt.subplots(1,1,figsize=(15,5))
+                ax.plot(df1['Dates'],-1*df1[pcol],'r.')
+                df1[pcol] -= dfbias['OPbias'].iloc[ii]
+                ax.plot(df1['Dates'],-1*df1[pcol],'b.')
+                ax.grid()
+                ax.set_title(f'{pcol} before(r) and after(b) bias correction of {dfbias["OPbias"].iloc[ii]:.2f}')
+                fig.savefig(f'{figspath}/{pcol}_biasCorrection.png')
+                plt.show()
     if len(dfbias['OPbias']) == 0:
         print('You need a bias to continue')
         exit(-1)
-print('line 287',pdepths)        
+
 # when pressure is deeper than nominal, set it to nominal, except for WARM buoys
 if not binf['name'][1].startswith('W'): 
     fig,ax = plt.subplots(len(Pcols),1,figsize=(15,5*len(Pcols)),sharex=True)
@@ -323,11 +330,8 @@ if not binf['name'][1].startswith('W'):
             ax[ii].grid()
     plt.savefig(f'{figspath}/PresSetDeeper2Nominal.png')
     plt.show()
-
-# define 'after melt' for WARM buoys ?
-if binf['name'][1].startswith('W'):
-    df1 = hangingVertical(df1,pdepths,bid,figspath)
-   
+    
+print(df1.columns)
 
 fig1,ax1 = plt.subplots(1,1,figsize=(25,10))
 for ii,pcol in enumerate(Pcols):
@@ -356,8 +360,6 @@ for col in Dcols:
     df1[col] = np.nan
 df1['D0'] = 0.0
 print('line 340',df1.columns)
-# if binf['name'][1].startswith('W'):
-#     df1.loc[(df1['hangingVert']==1),'D0'] = tdepths[0]+pdepths[-1]-df1.loc
 
 ### determine water/ice
 print('Determining Water/Ice values')
@@ -650,17 +652,9 @@ if len(pdepths)>0:
                 tdepthsRidged = [x - ridgedAmount for x in tdepths]  #( df1['P1corr'].iloc[ii] - pdepths[1])            
                 tcalcdepths[ii,:] = fi(tdepthsRidged)
                 tcalcdepths[ii,:deepestZero] = 0
-                # fig7,ax7 = plt.subplots(1,1)
-                # ax7.plot([-1*x for x in tdepths],[-1*x for x in tdepths],'.--',color='g')
-                # ax7.plot([-1*x for x in tdepths],[-1*x for x in tdepthsRidged],'b.--')
-                # ax7.plot([-1*x for x in tdepths],-1*tcalcdepths[ii,:],'r.-')
-                # plt.show()
-                # exit(-1)
                 
             elif df1['dragging'].iloc[ii]:
-                # print([x for x in tdepths if x>df1['P1'].iloc[ii]],len([x for x in tdepths if x>df1['P1'].iloc[ii]]))
                 dragged = len(tdepths) - len([x for x in tdepths if x>df1['P1'].iloc[ii]])
-                # print('dragged',ii,df1['P1'].iloc[ii],dragged)
                 tcalcdepths[ii,dragged:] = df1['P1'].iloc[ii]
                 if dragged < len(tdepths)-1:
                     pdepthsDragging = [tdepths[dragged]]
@@ -668,16 +662,9 @@ if len(pdepths)>0:
                     fi = interpolate.interp1d(pdepthsDragging,pmeas,fill_value = 'extrapolate')
                     tcalcdepths[ii,:dragged+1] = fi(tdepths[:dragged+1])
                 else:
-                   # pnoms = [df1[Pcols[0]].iloc[ii]]
-                   # pnoms.extend(pdepths[1:])
                    fi = interpolate.interp1d(pdepths,pmeas,fill_value = 'extrapolate')
                    tinvolved = tdepths
                    tcalcdepths[ii,:] = fi(tinvolved)
-                   # pdepthsDragging = [-1*df1['P1'].iloc[ii]]
-                   #  pdepthsDragging.insert(0,0)
-                   #  fi = interpolate.interp1d(pdepthsDragging,pmeas,fill_value = 'extrapolate')
-                   #  tcalcdepths[ii,:] = fi(tdepths)
-           
             
     tcalcdepths = np.array(tcalcdepths)
     print(tcalcdepths.shape)
@@ -721,26 +708,6 @@ plt.show()
 
 # removing temperature spikes
 df1 = removeTspikes(bid,df1,tdepths,figspath)
-
-
-# print(Tcols)
-# print(Dcols)
-# fig9,ax9 = plt.subplots(1,1,figsize=(15,10))
-# for ii, row in df1.iloc[:nProfiles].iterrows():
-#     tees = [df1[tcol].iloc[ii] for tcol in Tcols]
-#     dees = [df1[dcol].iloc[ii] for dcol in Dcols]
-#     if not df1[[col for col in Pcols if col.startswith('P')]].iloc[ii].isna().any():
-#         ax9.plot([tee+ii for tee in tees],[-1*dee for dee in dees],'.-')
-#         if not np.isnan([tees[indp] for indp in indP]).any():
-#             ax9.plot([tees[indp]+ii for indp in indP],[-1*df1[col].iloc[ii] for col in Pcols[1:]],'rx')
-
-# ax9.grid()
-# ax9.set_title(f'first {nProfiles} temperature profiles at calculated depths. Red xs show measured T/P.')
-# ax9.set_xlabel('Temperatures + index, to offset profiles for better viewing')
-# ax9.set_ylabel('Calculated Depths, (m)')
-# fig9.savefig(f'{figspath}/First{nProfiles}Tprofiles.png')
-# plt.show()
-
 
 try:
     fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
