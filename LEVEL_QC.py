@@ -56,9 +56,16 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2/'
 # bid = '300234060320940'   # 2019 05   3 pres Mosaic are made by Marlin-Yug 
 # bid = '300234060320930'   # 2019 04  Mosaic
 # bid = '300234068719480'   # 2019 03
+# bid = '300234068519450'   # 2019 02  SIZRS 3 pres
 # bid = '300234068514830'   # 2019 01  SIZRS short string OP at 20m (not the normal 25m)
 # bid = '300234061160500'   # 2020 01   3 pres Mirai by Marlin-Yug
-bid = '300534060649670'   # 2021 01   4 pres
+# bid = '300534060649670'   # 2021 01   4 pres
+# if '300534060649670' in bid:
+#     L1path = '/Users/suzanne/Google Drive/UpTempO/UPTEMPO/WebData'  # this version has GPSquality
+bid = '300534060251600'   # 2021 02   3 pres
+# bid = '300534060051570'   # 2021 03   1 pres
+# bid = '300534062158480'   # 2021 04   salinity ball, no pres
+# bid = '300534062158460'   # 2021 05   salinity ball, no pres
 
 
 # buoys already converted and used for writing/testing code. 
@@ -132,17 +139,35 @@ if '300234060320930' in bid:  # 2019 04 Mosaic
 if '300234068719480' in bid:  # 2019 03 SIZRS
     dt1=dt.datetime(2019,9,12)
     dt2=dt.datetime(2019,12,19)
+if '300234068519450' in bid:  # 2019 02 SIZRS
+    dt1=dt.datetime(2019,8,13)
+    dt2=dt.datetime(2022,11,8)
 if '300234068514830' in bid:  # 2019 01 SIZRS
     dt1=dt.datetime(2019,7,30)
     dt2=dt.datetime(2020,11,2)
 if '300234061160500' in bid:  # 2020 01 SIZRS
     dt1=dt.datetime(2020,11,10)
     dt2=dt.datetime(2021,10,3)
+if '300534060649670' in bid:  # 2021 01 SIZRS
+    dt1=dt.datetime(2021,8,24)
+    dt2=dt.datetime(2022,2,28)
+if '300534060251600' in bid:  # 2021 02 SIZRS
+    dt1=dt.datetime(2021,9,14)
+    dt2=dt.datetime(2021,12,24)
+if '300534060051570' in bid:  # 2021 03 SIZRS
+    dt1=dt.datetime(2021,9,29)
+    dt2=dt.datetime(2021,11,2)
+if '300534062158480' in bid:  # 2021 04 SIZRS
+    dt1=dt.datetime(2021,10,12)
+    dt2=dt.datetime(2021,10,24)
+if '300534062158460' in bid:  # 2021 05 SIZRS
+    dt1=dt.datetime(2021,11,1)
+    dt2=dt.datetime(2021,11,24)
 
 print('level 1 file',level1File)
 f1 = open(level1File,'r')
-if bid in ['300234064737080','300234062491420','300234064739080','300234068514830','300534062897730','300534062894700']:
-    ########    add the otherw=s...      2022-02, 2022-07
+if bid in ['300234064737080','300234062491420','300234064739080','300234068514830','300534060251600','300534062897730','300534062894700']:
+    ########    add the otherw=s...    2021-02,  2022-02, 2022-07
     WrapCorr = 'YES'
 else:
     WrapCorr = 'NO'
@@ -151,17 +176,44 @@ f2 = open(level2Draft,'w')
 df1,pdepths,tdepths,sdepths,ddepths,tiltdepths = getL1(level1File,bid,figspath)
 print('tdepths',tdepths)
 print(len(df1))
-print()
 
+Tcols = [col for col in df1.columns if col.startswith('T') and 'Ta' not in col and 'Tilt' not in col]
+#### plot temps individually on their own plot
+for ii,tcol in enumerate(Tcols):
+    fig,ax = plt.subplots(1,1,figsize=(15,5))
+    ax.plot(df1['Dates'],df1[tcol],'*',color=colorList[ii],ms=3)
+    ax.set_title(f'Level 1 {binf["name"][0]}-{int(binf["name"][1]):02d} {tcol}')
+    ax.grid()
+    ax.set_xlim([dt1,dt2])
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    
+    plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{int(binf["name"][1]):02d}_{tcol}.png')
+    plt.show()
+# print(df1.tail())
 
 Pcols = [col for col in df1.columns if col.startswith('P')]
-print('Pcols',Pcols)
-print(df1['Lon'].max())
-print(df1['Lat'].min())
+#### plot all press on one plot
+# fig,ax = plt.subplots(1,1,figsize=(15,5))
+# for ii,col in enumerate(Pcols):
+#     ax.plot(df1['Dates'],-1*df1[col],'*',color=colorList[ii],ms=3)
+# ax.set_title(f'Level 1 {binf["name"][0]}-{int(binf["name"][1]):02d} Pressures')
+# ax.grid()
+# ax.set_xlim([dt1,dt2])
+# ax.xaxis.set_major_locator(mdates.DayLocator(interval=30))
+# ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    
+# plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{int(binf["name"][1]):02d}_Pressures.png')
+# plt.show()
+# print('Pcols',Pcols)
+# print(df1['Lon'].max())
+# print(df1['Lat'].min())
+# exit(-1)
     
 # find pressure spikes and invalidate them, interpolate through
 print(binf['brand'])
-df1 = removePspikes(bid,df1,pdepths,figspath,brand=binf['brand'])
+if len(pdepths)>0:
+    df1 = removePspikes(bid,df1,pdepths,figspath,brand=binf['brand'],dt1=dt1,dt2=dt2)
 
 print(len(df1.columns))
 # start making output .dat file, header is same as LEVEL 1 file
@@ -195,10 +247,11 @@ print(outputCols)
 # #     df1.drop(['Ta'],inplace=True)
     
 # get indices of tdepths where pdepths in intersects
-indT = dict((k,i) for i,k in enumerate(tdepths))
-inter = set(indT).intersection(pdepths)  # intersection of the keys
-indP = sorted([indT[x] for x in inter])  # intersection of the values (indices)
-print('indices of tdepths at pdepths',indP)
+if len(pdepths)>0 and len(tdepths)>0:
+    indT = dict((k,i) for i,k in enumerate(tdepths))
+    inter = set(indT).intersection(pdepths)  # intersection of the keys
+    indP = sorted([indT[x] for x in inter])  # intersection of the values (indices)
+    print('indices of tdepths at pdepths',indP)
 
 compareL2 = input('Do you want to compare L1 to Wendys L2? : y for Yes, n for No ')
 if compareL2.startswith('y'):
@@ -249,25 +302,22 @@ if compareL2.startswith('y'):
 Pcols = [col for col in df1.columns if col.startswith('P')]
 Tcols = [col for col in df1.columns if col.startswith('T') and not col.startswith('Tilt')]
 Scols = [col for col in df1.columns if col.startswith('S') and not col.startswith('SUB')]
-Dcols = [f'D{col[1:]}' for col in df1.columns if col.startswith('T') and not col.startswith('Tilt')]
+if Pcols:
+    Dcols = [f'D{col[1:]}' for col in df1.columns if col.startswith('T') and not col.startswith('Tilt')]
+    # Dcols = [f'D{col[1:]}' for col in df1.columns if col.startswith('D') and not col.startswith('Dest')]
 Tiltcols = [col for col in df1.columns if col.startswith('Tilt')]
 print(Pcols)
 print(Tcols)
 print(Scols)
-print(Dcols)
+if Pcols:
+    print(Dcols)
 print(Tiltcols)
 print('pdepths',pdepths)
 print('tdepths',tdepths)
-print('sdepths',tdepths)
-print('ddepths',tdepths)
-print('tiltdepths',tdepths)
+print('sdepths',sdepths)
+print('ddepths',ddepths)
+print('tiltdepths',tiltdepths)
 print()
-
-# get indices in tdepths where pdepths in intersects
-indT = dict((k,i) for i,k in enumerate(tdepths))
-inter = set(indT).intersection(pdepths)  # intersection of the keys
-indP = sorted([indT[x] for x in inter])  # intersection of the values (indices)
-print(df1.columns)
 
 ### find and remove Ocean pressure bias
 if len(pdepths)>0:
@@ -314,22 +364,23 @@ if len(pdepths)>0:
         exit(-1)
 
 # when pressure is deeper than nominal, set it to nominal, except for WARM buoys
-if not binf['name'][1].startswith('W'): 
-    fig,ax = plt.subplots(len(Pcols),1,figsize=(15,5*len(Pcols)),sharex=True)
-    if len(Pcols)==1:
-        df1.loc[(df1['P1']>pdepths[0]),'P1'] = pdepths[0]
-        ax.plot(df1['Dates'],-1*df1[pcol],'.-')
-        ax.set_title(f'Bias corrected Pressures, nominal depth {int(pdepths[ii])}',fontsize=16)
-        ax.grid()
-    else:    
-        for ii,pcol in enumerate(Pcols):
-            print(ii,pcol)
-            df1.loc[(df1[pcol]>pdepths[ii]),pcol] = pdepths[ii]
-            ax[ii].plot(df1['Dates'],-1*df1[pcol],'.-')
-            ax[ii].set_title(f'Bias corrected Pressures, nominal depth {int(pdepths[ii])}',fontsize=16)
-            ax[ii].grid()
-    plt.savefig(f'{figspath}/PresSetDeeper2Nominal.png')
-    plt.show()
+if len(pdepths)>0:
+    if not binf['name'][1].startswith('W'): 
+        fig,ax = plt.subplots(len(Pcols),1,figsize=(15,3*len(Pcols)),sharex=True)
+        if len(Pcols)==1:
+            df1.loc[(df1['P1']>pdepths[0]),'P1'] = pdepths[0]
+            ax.plot(df1['Dates'],-1*df1[pcol],'.-')
+            ax.set_title(f'Bias corrected Pressures, nominal depth {int(pdepths[ii])}',fontsize=16)
+            ax.grid()
+        else:    
+            for ii,pcol in enumerate(Pcols):
+                print(ii,pcol)
+                df1.loc[(df1[pcol]>pdepths[ii]),pcol] = pdepths[ii]
+                ax[ii].plot(df1['Dates'],-1*df1[pcol],'.-')
+                ax[ii].set_title(f'Bias corrected Pressures, nominal depth {int(pdepths[ii])}',fontsize=16)
+                ax[ii].grid()
+        plt.savefig(f'{figspath}/PresSetDeeper2Nominal.png')
+        plt.show()
     
 print(df1.columns)
 
@@ -340,25 +391,34 @@ ax1.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
 ax1.set_ylabel('Ocean Pressure',color='lightgray',fontsize=14)
 secax=ax1.twinx()
 secax.spines['right'].set_color('blue')
-secax.set_ylabel('Temperatures',color='b',fontsize=14)
-secax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+secax.set_ylabel('Temperatures (b), WaterIce(r)',color='b',fontsize=14)
+if '300234068519450' in bid:
+    secax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+else:
+    secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+    secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
 for ii,tcol in enumerate(Tcols):
     print(ii,tcol)
     secax.plot(df1['Dates'],df1[tcol],color=colorList[ii],alpha=0.7,label=f'{tdepths[ii]}')
+secax.plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1.8,-1.8],'--',color='gray')
 secax.legend()  
 secax.set_ylim([-25,15])    
 secax.grid()  
 ax1.set_xlim([dt1,dt2])
-fig1.savefig(f'{figspath}/PressureTemperature.png')
-plt.show()
+# fig1.savefig(f'{figspath}/PressureTemperature.png')
+# plt.show()
+# print('line 406',df1.head())
+# exit(-1)
 
 # make column for Water/Ice indicator (before depths)
 df1['WaterIce'] = np.nan
+
 # depth column values to NaNs
-for col in Dcols:
-    df1[col] = np.nan
-df1['D0'] = 0.0
+if len(pdepths)>0:
+    for col in Dcols:
+        df1[col] = np.nan
+    df1['D0'] = 0.0
 print('line 340',df1.columns)
 
 ### determine water/ice
@@ -366,8 +426,13 @@ print('Determining Water/Ice values')
 IceInd = 'YES'
 indicator = []
 mindist = []
+
 for index, row in df1.iterrows():
     # if df2['WaterIce'].iloc[index]==2:
+        # print(index)
+        # print(df1['Dates'].iloc[index])
+        # print(df1['Lon'].iloc[index],df1['Lat'].iloc[index])
+        # print(df1.iloc[ii])
         indi,mind = getBuoyIce(df1['Lon'].iloc[index],df1['Lat'].iloc[index],
                                 df1['Year'].iloc[index],df1['Month'].iloc[index],df1['Day'].iloc[index],
                                 df1['T0'].iloc[index],plott=0,bid=bid,figspath=figspath)
@@ -376,6 +441,9 @@ for index, row in df1.iterrows():
 
 # df1.insert(nextColNum,'WaterIce',indicator)
 df1['WaterIce'] = indicator
+secax.plot(df1['Dates'],df1['WaterIce'],'r')
+fig1.savefig(f'{figspath}/PressureTemperature.png')
+plt.show()
 
 fig3,ax3 = plt.subplots(4,1,figsize=(15,15),sharex=True)
 ax3[0].plot(df1['Dates'],df1['WaterIce'])
@@ -391,32 +459,45 @@ f2.write(f'% {nextColNum} = Open Water or Ice Indicator (1=ice, 2=water)\n')
 nextColNum += 1
 print(nextColNum)
 
-# find FWT only based on W/I indicator, to start
+# find FWT based on W/I indicator and SST, to start
 FirstTpodInd = 'YES'
 SSTInd = 'YES'
 df1['FirstTpod'] = 0
-df1.loc[df1['WaterIce']==1,'FirstTpod'] = 1
+df1.loc[(df1['WaterIce']==1) & (df1['T0']<-1.8),'FirstTpod'] = 1
+fig99,ax99 = plt.subplots(1,1,figsize=(15,5))
+ax99.plot(df1['Dates'],df1['FirstTpod'],'b.-')
+ax99.grid()
+
+if '300234068519450' in bid:   # 2019 02
+    fig88,ax88 = plt.subplots(1,1,figsize=(15,5))
+    ax88.plot(df1['Dates'],-1*df1['P1'],'.-',color='gray')
+    secax = ax88.twinx()
+    secax.plot(df1['Dates'],df1['T2'],'.-',color=cList[2])
+    secax.plot(df1['Dates'],df1['T3'],'.-',color=cList[3])
+    ax88.set_title('P1(gray), T2(darker blue), T3(lighter blue)')
+    plt.show()
 
 # assume no ridging, unless we answer yes to questions below
 df1['ridged'] = 0
 
-fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
-ax0.plot(df1['Dates'],-1*df1['P1'],'b.-')
-ax0.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
-ax0.set_ylabel('Pressure',color='b')
-
-secax=ax0.twinx()
-secax.spines['right'].set_color('red')
-# secax.set_ylim(940.0,1080)
-secax.set_ylabel('Water(2), Ice(1)',color='r')
-secax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
-secax.plot(df1['Dates'],df1['WaterIce'],color='r',alpha=0.7)
-ax0.set_xlim([dt1,dt2])
-ax0.set_title(f'Ocean Pressure nominal depth {pdepths[0]} (b), Water(2)/Ice(1) indicator (r)')
-ax0.grid()
-fig0.savefig(f'{figspath}/P1_WaterIce.png')
-# plt.show()
+if len(pdepths)>0:
+    fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
+    ax0.plot(df1['Dates'],-1*df1['P1'],'b.-')
+    ax0.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
+    ax0.set_ylabel('Pressure',color='b')
+    
+    secax=ax0.twinx()
+    secax.spines['right'].set_color('red')
+    # secax.set_ylim(940.0,1080)
+    secax.set_ylabel('Water(2), Ice(1)',color='r')
+    secax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    secax.plot(df1['Dates'],df1['WaterIce'],color='r',alpha=0.7)
+    ax0.set_xlim([dt1,dt2])
+    ax0.set_title(f'Ocean Pressure nominal depth {pdepths[0]} (b), Water(2)/Ice(1) indicator (r)')
+    ax0.grid()
+    fig0.savefig(f'{figspath}/P1_WaterIce.png')
+    # plt.show()
 
 # find ridging times (besides indicated by Water/Ice indicator), put on .csv file
 iceday = input('Do you want to look at ice conc to find ridging times? : y for Yes, n for No ')
@@ -447,15 +528,18 @@ if iceday.startswith('y'):
              df1.loc[(df1['Dates']>=dt.datetime(int(icedate[:4]),int(icedate[4:6]),int(icedate[6:]))) &
                      (df1['Dates']<=dt.datetime(int(icedate[:4]),int(icedate[4:6]),int(icedate[6:])+1)),'Lat'],
                      'b.',transform=ccrs.PlateCarree())
+    ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
     ax1.set_title(f'IceConc and track(b) on {dt.datetime(int(icedate[:4]),int(icedate[4:6]),int(icedate[6:]))}. Red shows entire track.')
     fig1.savefig(f'{figspath}/IceConc_Buoytrack_{icedate}.png')
     plt.show()
+    exit(-1)
 
 # find riding times (besides indicated by Water/Ice indicator), put in .csv file
 rTimes = input('Do you want to make ridging time periods file? : y for Yes, n for No ')
 if rTimes.startswith('y'):
-    fig1,ax1 = plt.subplots(len(Pcols),1,figsize=(15,4*len(Pcols)),sharex=True)
-    for ii,ax in enumerate(ax1):
+    fig1,ax1 = plt.subplots(len(Pcols),1,figsize=(15,3*len(Pcols)),sharex=True)
+    for ii,ax in enumerate(np.array(ax1).reshape(-1)):  # allows the looping on one subplot
         ax.plot(df1['Dates'],-1*df1[Pcols[ii]],'b.-')
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
@@ -476,6 +560,7 @@ if rFile.startswith('y'):
     dfr['dt2'] = pd.to_datetime(dfr['dt2'],format='%m/%d/%y %H:%M')
     dfr.dropna(axis=0,how='all',inplace=True)
     print(dfr)
+    print(len(dfr))
 
     # plot to ensure the ridged areas
     rcols = ['m','c','r','g','orange','k','m','c','r','g','orange','k','m','c','r','g','orange','k','m','c','r','g','orange','k']
@@ -484,44 +569,48 @@ if rFile.startswith('y'):
 
     df1['ridged'] = 0  # make columns pertaining to ridging
     df1['ridgedPressure'] = pdepths[0]
-    df1['FirstTpod'] = 0
-    fig0,ax0 = plt.subplots(len(Pcols),1,figsize=(15,4*len(Pcols)),sharex=True)
+    fig0,ax0 = plt.subplots(len(Pcols),1,figsize=(15,3*len(Pcols)),sharex=True)
     # secax0=ax0.twinx()
-    for jj,pcol in enumerate(Pcols):
-        print(jj,pcol)
-        ax0[jj].plot(df1['Dates'],-1*df1[Pcols[jj]],'b.-')
-        ax0[jj].xaxis.set_major_locator(mdates.DayLocator(interval=1))
-        ax0[jj].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
-        ax0[jj].grid()
-        secax=ax0[jj].twinx()
+    for jj,ax in enumerate(np.array(ax0).reshape(-1)):  # allows the looping on one subplot
+        # print('line 533',jj,pcol)
+        ax.plot(df1['Dates'],-1*df1[Pcols[jj]],'b.-')
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+        ax.grid()
+        secax=ax.twinx()
         secax.spines['right'].set_color('red')
         secax.set_ylabel('Water(2), Ice(1)',color='r')
-        secax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        secax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
         secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
         secax.plot(df1['Dates'],df1['WaterIce'],color='r',alpha=0.7)
         for ii,row in dfr.iterrows():      
-            print(ii,row)
+            print(ii,row,pdepths[0],pdepths[jj])
             ridgedAmount = pdepths[0]-dfr['OPlimit'].iloc[ii]
-            print('ridgedAmount',ridgedAmount)
-            ax0[jj].plot(df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'Dates'],
+            if '300534060649670' in bid and ii==len(dfr)-1 and jj>0:
+                ridgedAmount = 8.7
+            ax.plot(df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'Dates'],
                     -1*df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),Pcols[jj]],
                     '.',color=rcols[ii])
-            # ax0[jj].plot([dfr['dt1'].iloc[ii],dfr['dt2'].iloc[ii]],[-1*dfr['OPlimit'].iloc[ii],-1*dfr['OPlimit'].iloc[ii]],'k')
-            ax0[jj].plot([dfr['dt1'].iloc[ii],dfr['dt2'].iloc[ii]],[-1*(pdepths[jj]-ridgedAmount),-1*(pdepths[jj]-ridgedAmount)],'k')
-            # ax0[jj].plot([-1*(pdepths[jj]-ridgedAmount),-1*(pdepths[jj]-ridgedAmount)],[-1*dfr['OPlimit'].iloc[ii],-1*dfr['OPlimit'].iloc[ii]],'k')
+            ax.plot([dfr['dt1'].iloc[ii],dfr['dt2'].iloc[ii]],[-1*(pdepths[jj]-ridgedAmount),-1*(pdepths[jj]-ridgedAmount)],'k')
             df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'ridged'] = 1
             df1.loc[(df1['Dates']>=dfr['dt1'][ii]) & (df1['Dates']<=dfr['dt2'][ii]),'ridgedPressure'] = dfr['OPlimit'].iloc[ii]
-        ax0[jj].set_yticks(np.arange(np.floor(-1*df1[Pcols[jj]].max()),np.ceil(-1*df1[Pcols[jj]].min()),1))
-        ax0[jj].set_title(f'OP corrected for bias {Pcols[jj]}, colors for ridge levels')
-    plt.show()
+        ax.set_yticks(np.arange(np.floor(-1*df1[Pcols[jj]].max()),np.ceil(-1*df1[Pcols[jj]].min()),1))
+        ax.set_title(f'OP corrected for bias {Pcols[jj]}, colors for ridge levels')
     fig0.savefig(f'{figspath}/P1_WaterIce_ridging.png')
     # plt.show()
+    # exit(-1)
     df1['metersofRidge'] = pdepths[0]-df1['ridgedPressure']
     df1['FirstTpod'] = df1.apply(lambda row: sum(x<=row['metersofRidge'] for x in tdepths),axis=1)    
     df1.loc[(df1['WaterIce']==2),'FirstTpod'] = 0
+    df1.loc[(df1['T0']>-1.8),'FirstTpod'] = 0
+ax99.plot(df1['Dates'],df1['FirstTpod'],'ro')
+ax99.plot(df1['Dates'],df1['metersofRidge'],'k')
+ax99.set_title(' figure 99 ')
 
 ax3[2].plot(df1['Dates'],df1['FirstTpod'],'r.')
 ax3[2].set_title('First Wet Thermistor (zero based)')
+ax3[2].xaxis.set_major_locator(mdates.DayLocator(interval=10))
+ax3[2].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
 # plt.show()
 
 # find SST based on first wet thermistor, or actually temperature of FWT
@@ -540,13 +629,16 @@ for ii,row in df1.iterrows():
     df1.loc[ii,'sst' ] = df1.loc[ii,Tcols[fwt]]
 ax3[3].plot(df1['Dates'],df1['sst'],'r.')
 ax3[3].set_title('SST')
+ax99.plot(df1['Dates'],df1['FirstTpod'],'g--')
+fig99.savefig(f'{figspath}/fig99.png')
+
 for ax in ax3:
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
     ax.grid()
 fig3.savefig(f'{figspath}/WaterIce_T0_FWT_SST.png')
 
 plt.show()
-# exit(-1)
+
 
 if 'ridgedPressure' in df1.columns:
     try:
@@ -584,30 +676,50 @@ fig2.colorbar(ch,ax=ax2)
 ax2.set_title('Bathymetry along track')
 fig2.savefig(f'{figspath}/Bathymetry_track.png')
     
-fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
-ax0.plot(df1['Dates'],-1*df1[Pcols[-1]],'b.-')
-ax0.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
-ax0.set_ylabel('Ocean Pressure',color='b',fontsize=14)
 
-secax=ax0.twinx()
-secax.spines['right'].set_color('red')
-# secax.set_ylim(940.0,1080)
-secax.set_ylabel('Bathymetry',color='r',fontsize=14)
-secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
-secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
-for pdepth in pdepths:
-    secax.plot([dt1,dt2],[-1*pdepth,-1*pdepth],'k--')
-secax.plot(df1['Dates'],df1['bathymetry'],color='r',alpha=0.7)
+if len(pdepths)>0:
+    fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
+    ax0.plot(df1['Dates'],-1*df1[Pcols[-1]],'b.-')
+    ax0.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
+    ax0.set_ylabel('Ocean Pressure',color='b',fontsize=14)
 
-ax0.set_xlim([dt1,dt2])
-ax0.set_title(f'Ocean Pressure nominal depth {pdepths[-1]} (b), Bathymetry (GEBCO 2019) (r)',fontsize=15)
-ax0.grid()
-fig0.savefig(f'{figspath}/P1_Bathymetry.png')
-plt.show()
+    secax=ax0.twinx()
+    secax.spines['right'].set_color('red')
+    # secax.set_ylim(940.0,1080)
+    secax.set_ylabel('Bathymetry',color='r',fontsize=14)
+    secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+    secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    for pdepth in pdepths:
+        secax.plot([dt1,dt2],[-1*pdepth,-1*pdepth],'k--')
+    secax.plot(df1['Dates'],df1['bathymetry'],color='r',alpha=0.7)
+    
+    ax0.set_xlim([dt1,dt2])
+    ax0.set_title(f'Ocean Pressure nominal depth {pdepths[-1]} (b), Bathymetry (GEBCO 2019) (r)',fontsize=15)
+    ax0.grid()
+    fig0.savefig(f'{figspath}/P1_Bathymetry.png')
+    plt.show()      
+else:
+    fig0,ax0 = plt.subplots(1,1,figsize=(15,5))
+    secax=ax0.twinx()
+    secax.spines['right'].set_color('red')
+    secax.set_ylabel('Bathymetry',color='r',fontsize=14)
+    secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+    secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
+    secax.plot(df1['Dates'],df1['bathymetry'],color='r',alpha=0.7)
+    
+    ax0.set_xlim([dt1,dt2])
+    ax0.set_title(f'Bathymetry (GEBCO 2019) (r)',fontsize=15)
+    ax0.grid()
+    fig0.savefig(f'{figspath}/Bathymetry_timeSeries.png')
+    plt.show()      
+    
     
 startdrag = input('Enter start date of dragging as yyyymmdd (press return if None)')
 enddrag = input('Enter end date of dragging as yyyymmdd (press return if None)')
-if startdrag is not None and enddrag is not None:
+print(startdrag)
+print(enddrag)
+# if startdrag is not None and enddrag is not None:
+if startdrag and enddrag:
     df1.loc[(df1['Dates']>=startdrag) & (df1['Dates']<=enddrag),'dragging'] = 1
     fig3,ax3 = plt.subplots(1,1,figsize=(15,5))
     ax3.plot(df1['Dates'],-1*df1['P1'],'b')
@@ -617,7 +729,7 @@ if startdrag is not None and enddrag is not None:
     secax.plot(df1['Dates'],df1['dragging'],'r*')  
 # plt.show()
 
-    
+
 ### calculate thermistor depths
 if len(pdepths)>0:
     print('Interpolating calculated depths...')
@@ -631,6 +743,7 @@ if len(pdepths)>0:
     for ii, row in df1.iterrows():
         pmeas = [df1[col].iloc[ii] for col in Pcols]
         valid = np.where(~np.isnan(pmeas))[0].tolist()
+                   
         if len(valid)<2:  # meaning we only have pmeas=0, the rest NaNs
             tcalcdepths[ii,:] = np.nan
             tcalcdepths[ii,0] = 0
@@ -647,11 +760,39 @@ if len(pdepths)>0:
                 ridgedAmount = pdepths[1] - df1['ridgedPressure'].iloc[ii]
                 pdepthsRidged = [pdepth-ridgedAmount for pdepth in pdepths[1:]]
                 pdepthsRidged.insert(0,0)
-    
-                fi = interpolate.interp1d([pdepthsRidged[i] for i in valid],[pmeas[i] for i in valid],fill_value = 'extrapolate')
                 tdepthsRidged = [x - ridgedAmount for x in tdepths]  #( df1['P1corr'].iloc[ii] - pdepths[1])            
-                tcalcdepths[ii,:] = fi(tdepthsRidged)
-                tcalcdepths[ii,:deepestZero] = 0
+    
+                if '300534060649670' in bid and df1['Dates'].iloc[ii]>=dt.datetime(2022,1,12,23,0,0):
+                    pdepthsRidged = [pdepth-8.8 for pdepth in pdepths[-2:]]
+                    pdepthsRidged.insert(0, pdepths[1] - df1['ridgedPressure'].iloc[ii])
+                    pmeas = [df1['P1'].iloc[ii],df1['P3'].iloc[ii],df1['P4'].iloc[ii]]
+                    print(pdepthsRidged)
+                    print(pmeas)
+                    print()
+                    tdepthsRidged = [tdepth-8.8 for tdepth in tdepths[-3:]]
+                    tdepthsRidged.insert(0, tdepths[2] - df1['ridgedPressure'].iloc[ii])
+                    print(tdepthsRidged)
+                    fi = interpolate.interp1d(pdepthsRidged,pmeas,fill_value = 'extrapolate')
+                    tcalcdepths[ii,4:] = fi(tdepthsRidged)
+                    print(tcalcdepths[ii,:])
+                    tcalcdepths[ii,:2] = 0
+                    tcalcdepths[ii,2:4] = tcalcdepths[ii,4]
+                    # fig,ax = plt.subplots(1,1,figsize=(6,8))
+                    # ax.plot(-1*np.array(tdepths),-1*tcalcdepths[ii,:],'o-')
+                    # ax.plot(-1*tdepths[2],-1*tcalcdepths[ii,2],'ro')
+                    # ax.plot(-1*tdepths[6],-1*tcalcdepths[ii,6],'ro')
+                    # ax.plot(-1*tdepths[7],-1*tcalcdepths[ii,7],'ro')
+                    # ax.grid()
+                    # ax.set_xlabel('Nominal thermistor depths')
+                    # ax.set_ylabel('Measured(r), calculated(b) thermistor depths')
+                    # plt.show()
+                    # exit(-1)
+                else:
+
+                    fi = interpolate.interp1d([pdepthsRidged[i] for i in valid],[pmeas[i] for i in valid],fill_value = 'extrapolate')
+                    tcalcdepths[ii,:] = fi(tdepthsRidged)
+                    tcalcdepths[ii,:deepestZero] = 0
+                    tcalcdepths[ii,0] = 0   # re-apply in case deepestZero is zero (near open water, but pressure is ridged)
                 
             elif df1['dragging'].iloc[ii]:
                 dragged = len(tdepths) - len([x for x in tdepths if x>df1['P1'].iloc[ii]])
@@ -673,11 +814,11 @@ if len(pdepths)>0:
     CalcDepths = 'YES'
 else:
     CalcDepths = 'NO'
-    
 
 # set to invalid, unreasonably warm temperatures at depth
-for tcol,dcol in zip(Tcols,Dcols):
-    df1.loc[(df1[tcol]>10) & (df1[dcol]<20),tcol] = np.nan
+if len(pdepths)>0:
+    for tcol,dcol in zip(Tcols,Dcols):
+        df1.loc[(df1[tcol]>10) & (df1[dcol]<20),tcol] = np.nan
        
 # remove columns no longer needed
 if 'dragging' in df1.columns:
@@ -686,28 +827,36 @@ if 'bathymetry' in df1.columns:
     df1.drop(columns=['bathymetry'],inplace=True)
 if 'ridgedPressure' in df1.columns:
     df1.drop(columns=['ridgedPressure','metersofRidge'],inplace=True)
+if 'GPSquality' in df1.columns:
+    df1.drop(columns=['GPSquality'],inplace=True)
+df1.drop(columns=['ridged'],inplace=True) 
 
-for ii,dcol in enumerate(Dcols):
-    df1[dcol] = tcalcdepths[:,ii]
-    f2.write(f'% {nextColNum} = Calculated Depth at nominal depth {tdepths[ii]} (m)\n')
-    nextColNum += 1
+print('line 772',df1.head())
+print()
+if len(pdepths)>0: 
+    for ii,dcol in enumerate(Dcols):
+        df1[dcol] = tcalcdepths[:,ii]
+        f2.write(f'% {nextColNum} = Calculated Depth at nominal depth {tdepths[ii]} (m)\n')
+        nextColNum += 1
 
+    dfD = df1[[col for col in Dcols]]
+    fig10,ax10 = plt.subplots(2,1,sharex=True)
+    ch10 = ax10[0].imshow(dfD.T.to_numpy())
+    ax10[0].set_aspect('auto')
+    ax10[0].set_title('depths')
 
-dfT = df1[[col for col in Tcols]]
-dfD = df1[[col for col in Dcols]]
-fig10,ax10 = plt.subplots(2,1,sharex=True)
-ch10 = ax10[0].imshow(dfD.T.to_numpy())
-ax10[0].set_aspect('auto')
-ax10[0].set_title('depths')
-fig10.colorbar(ch10,ax=ax10[0])
-ch10 = ax10[1].imshow(dfT.T.to_numpy())
-ax10[1].set_title('temps')
-ax10[1].set_aspect('auto')
-fig10.colorbar(ch10,ax=ax10[1])
-plt.show()
+    dfT = df1[[col for col in Tcols]]
+    fig10.colorbar(ch10,ax=ax10[0])
+    ch10 = ax10[1].imshow(dfT.T.to_numpy())
+    ax10[1].set_title('temps')
+    ax10[1].set_aspect('auto')
+    fig10.colorbar(ch10,ax=ax10[1])
+    fig10.savefig(f'{figspath}/TempsDepths_np.arrays.png')
 
-# removing temperature spikes
-df1 = removeTspikes(bid,df1,tdepths,figspath)
+    plt.show()
+
+    # removing temperature spikes
+    df1 = removeTspikes(bid,df1,tdepths,figspath)
 
 try:
     fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
@@ -723,25 +872,26 @@ try:
 except NameError:
     pass
 
-fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
-for ii,dcol in enumerate(Dcols):
-    ax8.plot(df1['Dates'],-1*df1[dcol],'.-',color=colorList[ii],label=f'{tdepths[ii]}')
-ax8.xaxis.set_major_locator(mdates.DayLocator(interval=10))
-ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-# ax8.set_xlim([dt.datetime(2019,12,8),dt.datetime(2019,12,10)])
-# ax8.set_yticks(np.arange(-26,1))
-try:
-    ax8.set_title(f'Calculated Depths {binf["name"][0]}-{int(binf["name"][1]):02d}')
-except:
-    ax8.set_title(f'Calculated Depths {binf["name"][0]}-{binf["name"][1]}')
+if len(pdepths)>0:
+    fig8,ax8 = plt.subplots(1,1,figsize=(15,5))
+    for ii,dcol in enumerate(Dcols):
+        ax8.plot(df1['Dates'],-1*df1[dcol],'.-',color=colorList[ii],label=f'{tdepths[ii]}')
+    ax8.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+    ax8.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    # ax8.set_xlim([dt.datetime(2019,12,8),dt.datetime(2019,12,10)])
+    # ax8.set_yticks(np.arange(-26,1))
+    try:
+        ax8.set_title(f'Calculated Depths {binf["name"][0]}-{int(binf["name"][1]):02d}')
+    except:
+        ax8.set_title(f'Calculated Depths {binf["name"][0]}-{binf["name"][1]}')
         
-ax8.grid()
-ax8.legend(loc='best')
-ax8.set_xlim(dt1,dt2)
-try:
-    fig8.savefig(f'{figspath}/CalcDepths_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
-except:
-    fig8.savefig(f'{figspath}/CalcDepths_{binf["name"][0]}-{binf["name"][1]}.png')
+    ax8.grid()
+    ax8.legend(loc='best')
+    ax8.set_xlim(dt1,dt2)
+    try:
+        fig8.savefig(f'{figspath}/CalcDepths_{binf["name"][0]}-{int(binf["name"][1]):02d}.png')
+    except:
+        fig8.savefig(f'{figspath}/CalcDepths_{binf["name"][0]}-{binf["name"][1]}.png')
     
 fig9,ax9 = plt.subplots(1,1,figsize=(15,5))
 ax9.plot(df1['Dates'],df1['FirstTpod'])
@@ -749,7 +899,7 @@ ax9.xaxis.set_major_locator(mdates.DayLocator(interval=10))
 ax9.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 ax9.set_xlim([dt1,dt2])
 plt.show()
-# exit(-1)
+
 OPcorr4SLP = 'NO'
 OPcorr4drift = 'NO'
 Capped999 = 'YES'    
@@ -786,15 +936,8 @@ f2.write(f'%    First Wet Thermistor Indicator        ? {FirstTpodInd}\n')
 f2.write(f'%    Sea Surface Temperature Determination ? {SSTInd}\n')
 f2.write(f'END\n')
 
-df1.drop(columns=['ridged'],inplace=True)
 print('line 773')
 print(df1.columns)
-print(Dcols)
-for ii,dcol in enumerate(Dcols):
-    print(ii,dcol)
-print()
-print()
-print()
 # plot L2 similar to L1 in waterIce.py, getL1
 remcols = []
 for col in df1.columns:
@@ -899,7 +1042,7 @@ if 'SUB' or 'BATT' in df1.columns:
 uplotsL2.VelocitySeries(bid,figspath)
 
 # 2019 04,05  track locs in .dat files don't match website
-if bid in ['300234060320940','300234060320930']:   
+if bid in ['300234060320940','300234060320930','300234068519450']:   
     uplotsL2.TrackMaps2Atlantic(bid,figspath)
     
 # convert NaNs back to -999.

@@ -99,7 +99,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[5.],          # 37IM
                          'CTDpdepthsMadeBy':['SBE'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534062897730':{'notes':'UpTempO 2022 #2', # Mike\ Steele\ ONR\ SVP\ Salinity\ Ball\ 0004.pdf
                              'name':['2022','2'],       #  also, ONR_SVPS_DataFields_2022.pdf
@@ -118,7 +119,8 @@ def BuoyMaster(bid):
                              'HULLsdepths':[0.38],          # hull
                              'HULLsdepthsMadeBy':['SBE'],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
           '300534063704980':{'notes':'UpTempO 2022 #3', # Uptempo_NASA_Sound9_0002.pdf
                          'name':['2022','3'],           #  also, Nasa_T-Chain_DataFields_2022.pdf
@@ -139,7 +141,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[10,20,30,40,60],
                          'CTDpdepthsMadeBy':['SBE','SBE','SBE','SBE','SBE'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534063807110':{'notes':'UpTempO 2022 #4', # Mike\ Steele\ ONR\ SVP-S2_0002.pdf
                              'name':['2022','4'],           #  also ONR_SVPS2_37IM_DataFields_2022.pdf
@@ -164,7 +167,8 @@ def BuoyMaster(bid):
                              'CTDpdepths':[5],          # 37IM
                              'CTDpdepthsMadeBy':['SBE'],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
           '300534063803100':{'notes':'UpTempO 2022 #5', # Uptempo_NASA_Sound9_0002.pdf
                          'name':['2022','5'],           #  also, Nasa_T-Chain_DataFields_2022.pdf
@@ -185,7 +189,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[10,20,30,40,60],
                          'CTDpdepthsMadeBy':['SBE','SBE','SBE','SBE','SBE'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534062892700':{'notes':'UpTempO 2022 #6', # Mike\ Steele\ ONR\ SVPS_0001.pdf
                              'name':['2022','6'],       #  also, ONR_SVPS_DataFields_2022.pdf
@@ -204,7 +209,8 @@ def BuoyMaster(bid):
                              'HULLsdepths':[0.38],          # hull
                              'HULLsdepthsMadeBy':['SBE'],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
           '300534062894700':{'notes':'UpTempO 2022 #7', # Mike\ Steele\ ONR\ SVP\ Salinity\ Ball\ 0003.pdf
                              'name':['2022','7'],       #  also, ONR_SVPS_DataFields_2022.pdf
@@ -223,7 +229,8 @@ def BuoyMaster(bid):
                              'HULLsdepths':[0.38],          # hull
                              'HULLsdepthsMadeBy':['SBE'],     # SST 0.14, hull 0.44
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
           '300534062894740':{'notes':'UpTempO 2022 #8', # Mike\ Steele\ NASA\ SVP-S2_0003.pdf
                              'name':['2022','8'],           #  also Nasa_SVPS_XIM_DataFields_2022.pdf
@@ -244,7 +251,8 @@ def BuoyMaster(bid):
                              'CTDpdepths':[5],                 # 37IM
                              'CTDpdepthsMadeBy':['S9'],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
           '300534062896730':{'notes':'UpTempO 2022 #9', # Uptempo_ONR_Sound9_Seabird.pdf
                          'name':['2022','9'],           #  also, ONR_T-Chain_DataFields_2022.pdf
@@ -269,7 +277,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[20,40,60],
                          'CTDpdepthsMadeBy':['SBE','SBE','SBE'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534062894730':{'notes':'UpTempO 2022 #10', # Mike\ Steele\ NASA\ SVP-S2_0002.pdf
                          'name':['2022','10'],           #  also Nasa_SVPS_XIM_DataFields_2022.pdf
@@ -290,7 +299,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[5],                 # 37IM
                          'CTDpdepthsMadeBy':['S9'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534062893700':{'notes':'UpTempO 2022 #11', # Mike\ Steele\ NASA\ SVP-S2_0001.pdf
                          'name':['2022','11'],           #  also Nasa_SVPS_XIM_DataFields_2022.pdf
@@ -311,7 +321,8 @@ def BuoyMaster(bid):
                          'CTDpdepths':[5],                 # 37IM
                          'CTDpdepthsMadeBy':['S9'],
                          'vbatt_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
           '300534062895730':{'notes':'UpTempO 2022 #12', # SIZRS_2022-12.png
                          'name':['2022','12'],           #  also
@@ -329,7 +340,8 @@ def BuoyMaster(bid):
                          'pdepthsMadeBy':['PG','PG','PG'],
                          'vbatt_ind':1,
                          'bp_ind':1,
-                         'sub_ind':1},
+                         'sub_ind':1,
+                         'gps_ind':1},
 
 
 
@@ -349,7 +361,8 @@ def BuoyMaster(bid):
                              'tdepths':[0,0.28],  # changed from 0.22 2/2/2022
                              'sdepths':[0.28],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
          '300534062158480':{'notes':'UpTempO 2021 #4',
                              'name':['2021','4'],
@@ -364,7 +377,8 @@ def BuoyMaster(bid):
                              'tdepths':[0,0.28],  # changed from 0.22 2/2/2022
                              'sdepths':[0.28],
                              'vbatt_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
         '300534060051570':{'notes':'UpTempO 2021 #3',
                              'name':['2021','3'],
@@ -380,7 +394,8 @@ def BuoyMaster(bid):
                              'tdepths':[0.0,2.5, 5, 7.5, 10, 15, 20, 25],
                              'bp_ind':1,
                              'sub_ind':1,
-                             'vbatt_ind':1},
+                             'vbatt_ind':1,
+                             'gps_ind':1},
 
           '300534060251600':{'notes':'UpTempO 2021 #2',
                              'name':['2021','2'],
@@ -393,14 +408,16 @@ def BuoyMaster(bid):
                              'brand':'Pacific Gyre',
                              'pgname':'UW-TC-1W-0016',
                              'pdepths':[20.,40.,60.],
-                             'tdepths':[2.5, 5., 7.5, 10., 15., 20., 25., 30., 35., 40., 50., 60.],
+                             'tdepths':[0.0, 2.5, 5., 7.5, 10., 15., 20., 25., 30., 35., 40., 50., 60.],
                              'bp_ind':1,
                              'sub_ind':1,
-                             'vbatt_ind':1},
+                             'vbatt_ind':1,
+                             'gps_ind':1},
 
           '300534060649670':{'notes':'UpTempO 2021 #1',
                              'name':['2021','1'],
                              'imeiabbv':'649670',
+                             'wmo':'',
                              'deploymentDate':'8/25/2021',
                              'deploymentLon':-150.035994,
                              'deploymentLat':72.052522,
@@ -412,7 +429,8 @@ def BuoyMaster(bid):
                              'tdepths':[0.0, 2.5, 5.0, 7.5, 10.0, 15.0, 20.0, 25.0],
                              'vbatt_ind':1,
                              'bp_ind':1,
-                             'sub_ind':1},
+                             'sub_ind':1,
+                             'gps_ind':1},
 
 
 #  --------------------------2020 buoys-------------------------------------

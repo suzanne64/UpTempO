@@ -57,11 +57,16 @@ def UpTempOArcticMap(strdate=None): #nors='n'):
     else:
         ax1.text(-10,74,'SST data unavailable',color='k',fontsize=10,transform=ccrs.PlateCarree())
     # fig1.colorbar(ch)
+    print(icexx.shape)
+    print(iceyy.shape)
+    print(ice.shape)
     if ice is not None:
         ax1.contourf(icexx,iceyy,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
                           transform=ccrs.Stereographic(**kw))   #use either colors or cmap
     else:
         ax1.text(10,88,'ICE data unavailable',color='k',fontsize=10,transform=ccrs.PlateCarree())
+    plt.show()
+    exit(-1)
     # fig1.colorbar(ch)        
     ax1.set_title(f'UpTempO Buoy Positions {objdate.month}/{objdate.day}/{objdate.year}',fontsize=20)
     

@@ -94,6 +94,10 @@ def getL1(filename, bid, figspath):
                     columns.append('BATT')
                 if 'Submergence Percent' in line:
                     columns.append('SUB')
+                if 'GPS quality' in line:
+                    columns.append('GPSquality')
+                if 'SecondsToFix' in line:
+                    columns.append('SecondsToFix')
                 if '%END' in line:
                     data = np.array([ [float(item) for item in lines[jj].split()] for jj in np.arange(ii+1,len(lines))])
                     print(data.shape,'after %END')
@@ -255,21 +259,6 @@ def getL1(filename, bid, figspath):
         df.loc[(df['Dates']>dt.datetime(2019,4,30)) & (df['T0']<-20),'T0'] = np.nan
         # we need to find pdepths for this buoy. It's NOT 10dbar
 
-    if '300234068514830' in bid:  # 2019 01
-        # df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
-        # df.reset_index(inplace=True)
-        # df.loc[(df['P1']< 8),'P1'] = np.nan
-        print(df['T0'].max())
-        print(df['T0'].min())
-        maxValue = 61.9
-        minValue = -20
-        df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
-        for tcol in tcols:
-            if tcol != 'T0':
-                df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol] = np.nan
-                df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol] = np.nan
-
-    # more pressure editing, ORGANIZE this.
     if '300234060320940' in bid:  # 2019 05
         for pcol in pcols:
             df.loc[(df[pcol]<0),pcol] = np.nan
@@ -283,7 +272,27 @@ def getL1(filename, bid, figspath):
         for pcol in pcols:
             df.loc[(df[pcol]<0),pcol] = np.nan
             
+    if '300234068519450' in bid:  # 2019 02
+        for pcol in pcols:
+            df.loc[(df[pcol]>80) | (df[pcol]<5),pcol] = np.nan
+        df.loc[(df['P2']>45),'P2'] = np.nan
+        for pcol in pcols[1:]:
+            df.loc[(df['Dates']>dt.datetime(2022,5,18)),pcol] = np.nan
+        # T0 has wrapped values
+        maxValue = df['T0'].max()
+        minValue = df['T0'].min()
+        df.loc[(df['T0']>25),'T0'] -= (maxValue - minValue)
+        
     if '300234068514830' in bid:  # 2019 01
+        print(df['T0'].max())
+        print(df['T0'].min())
+        maxValue = df['T0'].max()
+        minValue = df['T0'].min()
+        df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
+        for tcol in tcols:
+            if tcol != 'T0':
+                df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol] = np.nan
+                df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol] = np.nan
         df.loc[(df['P1']==0.0),'P1'] = np.nan
         df.loc[(df['P1']>100),'P1'] = np.nan 
         df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'] = np.nan
@@ -303,6 +312,42 @@ def getL1(filename, bid, figspath):
         # invalidate low, constant temps
         for tcol in tcols:
            df.loc[(df[tcol]<=-20),tcol] = np.nan
+           
+    if '300534060649670' in bid:  # 2021 01
+        # since these data were re-downloaded to get GPSquality, we cull data after 'deceased' date
+        df.loc[(df['Dates']>dt.datetime(2022,2,27)),:] = np.nan
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        
+        df.loc[(df['Month']==12) & (df['Lat']<60),:] = np.nan
+        df.loc[(df['Month']==9) & (df['Lat']>73.1),:] = np.nan
+        df.loc[( (df['Month']==12) | (df['Month']==1) ) & (df['Lat']<69.2),:] = np.nan
+        df.loc[(df['Month']==1) & (df['Lat']>69.81),:] = np.nan
+        
+        df.loc[(df['Dates']>dt.datetime(2021,8,31)),'P2'] = np.nan
+        df['T0'].iloc[0] = np.nan
+        
+    if '300534060251600' in bid:  # 2021 02
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        # last loc looks bad, jumps too far in 1 hour even tho' GPSq=3
+        df.loc[(df['Dates']>=dt.datetime(2021,12,23,17,0,0)),:] = np.nan
+        print(df['T0'].max())
+        print(df['T0'].min())
+        df.loc[(df['T0']>20),'T0'] -= (df['T0'].max() - df['T0'].min())
+        df.loc[(df['P1']<7.5),'P1'] = np.nan
+        df.loc[(df['P2']<15),'P2'] = np.nan
+        df.loc[(df['P3']<30),'P3'] = np.nan
+        
+    if '300534060051570' in bid:  # 2021 03
+        df.loc[(df['Lat']<71),:] = np.nan  
+        df.loc[(df['P1']<10),'P1'] = np.nan     
+        
+    if '300534062158480' in bid:  # 2021 04
+        df.loc[(df['T0']<-10),'T0'] = np.nan  
+        df.loc[(df['S0']<25),'S0'] = np.nan      
+
+    if '300534062158460' in bid:  # 2021 05
+       df.loc[(df['T0']<-10),'T0'] = np.nan  
+       df.loc[(df['S0']<25),'S0'] = np.nan      
 
     if '300534062898720' in bid: # 2022 01
         df.loc[(df['Lon']>0) | (df['Lat']<70) | (df['Lat']>85),:] = np.nan
@@ -320,9 +365,9 @@ def getL1(filename, bid, figspath):
         minValue = -5
         df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
         # invalidate salinities after max salinity
-        imax = df['S0'].idxmax()
-        df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<10),'S0'] = np.nan
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<2.5),'S0'] = np.nan
 
     if '300534063704980' in bid: # 2022 03 
         pass  
@@ -357,9 +402,9 @@ def getL1(filename, bid, figspath):
         minValue = -5
         df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
         # invalidate salinities after max salinity
-        imax = df['S0'].idxmax()
-        df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<5),'S0'] = np.nan
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<0.5),'S0'] = np.nan
 
     if '300534062894740' in bid: # 2022 08
         df.loc[(df['Lat']<70),:] = np.nan
@@ -376,10 +421,13 @@ def getL1(filename, bid, figspath):
         for tcol in tcols:
            df.loc[(df[tcol]>10),tcol] = np.nan
         for scol in scols:
-            df.loc[(df[scol]<20),scol] = np.nan
+            if 'S0' not in scol:
+                df.loc[(df[scol]<20),scol] = np.nan
+            else:
+                df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
             df.loc[(df[scol]>40),scol] = np.nan
-        imax = df['S0'].idxmax()
-        df['S0'].iloc[imax+1:] = np.nan
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
                 
     if '300534062894730' in bid: # 2022 10
         df.loc[(df['P1']>60),'P1'] = np.nan
@@ -394,7 +442,10 @@ def getL1(filename, bid, figspath):
     
     
     # drop a column if all values are NaN
+    df.dropna(axis=1,how='all',inplace=True)
+    # drop a row if all values are NaN, reset index
     df.dropna(axis=0,how='all',inplace=True)
+    df=df.reset_index(drop=True)
     
     # check influence of 'correcting' for SLP
     # if bid in ['300234060320940','300234060320930']:  # 2019 04,05
@@ -462,7 +513,7 @@ def getL1(filename, bid, figspath):
             # elif col.startswith('T'):                
                 for ii,tcol in enumerate(tcols):
                     # fig,ax = plt.subplots(1,1,figsize=(15,5))
-                    ax.plot(df['Dates'],df[tcol],'*',color=colorList[ii],ms=1)
+                    ax.plot(df['Dates'],df[tcol],'*',color=colorList[ii],ms=3)
                     # ax.set_title(tcol)
                     # plt.show()
                     # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
@@ -726,6 +777,7 @@ def plotL1vL2(df1,df2,bid,casestr=None):
 
 
 def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
+    # print(blon,blat,byear,bmonth,bday)
     delta = 45  # nsidc ice maps rotated -45degrees
     grid_size = 25 #km
     bx,by = polar_lonlat_to_xy(blon+delta, blat, TRUE_SCALE_LATITUDE, EARTH_RADIUS_KM, EARTH_ECCENTRICITY, hemisphere)
@@ -737,7 +789,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     # get ice map
     strdate = f'{int(byear)}{int(bmonth):02}{int(bday):02}'
     objdate = dt.datetime.strptime(strdate,'%Y%m%d')
-    if objdate < dt.datetime(2022,1,1):  # g02202(climate data record)
+    if objdate < dt.datetime(2022,6,1):  # g02202(climate data record)
         icefile = f'{int(byear)}/seaice_conc_daily_nh_{strdate}_f17_v04r00.nc'
         ncdata=nc.Dataset(f'{icepath}/{icefile}')
         ice=np.squeeze(ncdata['cdr_seaice_conc'])
@@ -782,7 +834,11 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
         # print('flag meanings',ncdata.variables['F18_ICECON'].getncattr('flag_meanings'))
         # print('flag0 values',ncdata.variables['F18_ICECON'].getncattr('flag_values'))
         # print(ncdata['F18_ICECON'].shape)
-        ice=np.squeeze(ncdata['F17_ICECON']).astype('float')  # np.squeeze converts nc dataset to np array
+        try:
+            ice=np.squeeze(ncdata['F17_ICECON']).astype('float')  # np.squeeze converts nc dataset to np array
+        except:
+            ice=np.squeeze(ncdata['F18_ICECON']).astype('float')  # np.squeeze converts nc dataset to np array
+                
         y=ncdata['y'][:]
         x=ncdata['x'][:]
         icesrc = 'NSIDC-0081'
@@ -1188,7 +1244,7 @@ def getRidging(pcol,pdepth,df,bid,figspath):
     return df
 
 
-def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
+def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=None):
     # get columns that might need spike removal
     Pcols = [col for col in df1.columns if col.startswith('P')]
     spikeLimit = {'Pacific Gyre':{20:5,40: 9,60:16,80:16},
@@ -1226,6 +1282,10 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre'):
         ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1*spikeLimit[brand][limit],-1*spikeLimit[brand][limit]],'--',color='gray')
         ax[0].set_xlim([df1['Dates'].iloc[0],df1.loc[(df1['dPdh'].last_valid_index()),'Dates']])  
         ax[1].plot(df1['Dates'],-1*df1[pcol],'g--')
+        ax[0].xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+        ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        if dt1 is not None:
+            ax[0].set_xlim([dt1,dt2])
         ax[1].set_title(f'Pressure original(r), after removal per table in Level2_QC_doc.php(b), after interpolation(g--), {pcol}')
         plt.savefig(f'{figspath}/{pcol}spikes.png')    
         plt.show()
@@ -1393,69 +1453,6 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
     df1.drop([col for col in df1.columns if 'min' in col],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'range' in col],axis=1,inplace=True)
  
-    return df1
-
-def hangingVertical(df1,pdepths,bid,figspath):
-    binf = BM.BuoyMaster(bid)
-    # rFile = input('Do you want to READ melting time periods file? : y for Yes, n for No ')
-    # if rFile.startswith('y'):
-    meltFile = f'/Users/suzanne/Google Drive/UpTempO/level2/warmMelting{binf["name"][0]}-{binf["name"][1]}.csv'
-    dfm = pd.read_csv(meltFile)
-    dfm['dt1'] = pd.to_datetime(dfm['dt1'],format='%m/%d/%y %H:%M')
-    dfm['dt2'] = pd.to_datetime(dfm['dt2'],format='%m/%d/%y %H:%M')
-    dfm.dropna(axis=0,how='all',inplace=True)
-    print(dfm)
-    # exit(-1)
-    # dfday = df1.groupby(pd.Grouper(freq='2D',key='Dates')).mean()
-    # dfday.reset_index(inplace=True)
-    # df1['hangingVert'] = 0
-    
-    Pcols = [col for col in df1.columns if col.startswith('P')]
-    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
-
-    fig,ax = plt.subplots(len(Pcols),1,figsize=(15,5*len(Pcols)),sharex=True)
-    print(Pcols[0])
-
-    secax=ax.twinx()
-    for ii, axi in enumerate(fig.axes):
-        if ii<len(fig.axes):
-            print(ii)
-            print(Pcols[ii-1])
-            print('length',len(fig.axes))
-            print(axi)
-        # for ii, (axi,pcol) in enumerate(zip(ax,Pcols)):
-            # dfday[f'{Pcols[ii]}anom'] = dfday[Pcols[ii]].sub(pdepths[ii])
-            axi.plot(df1['Dates'],-1*df1[Pcols[ii-1]],'.-',color='b')
-            for jj,row in dfm.iterrows():
-                secax.plot([dfm['dt1'].iloc[jj],dfm['dt2'].iloc[jj]],[dfm['hanging'].iloc[jj],dfm['hanging'].iloc[jj]],color='red')
-            secax.spines['right'].set_color('red')
-            secax.set_ylabel('hanging vertical indicator',color='red',fontsize=14)
-            secax.set_ylim([-0.2,1.2])
-            # axi.plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[0,0],'b')
-            axi.grid()
-            # dfday[f'{Pcols[ii]}sign'] = dfday[f'{Pcols[ii]}anom'].apply(lambda x: -1*np.sign(x))
-            # print('line 347',Pcols[ii],dfday.loc[(dfday[f'{Pcols[ii]}sign'][::-1].idxmax()+1),'Dates'])
-            # df1.loc[(df1['Dates']>dfday.loc[(dfday[f'{Pcols[ii]}sign'][::-1].idxmax()+1),'Dates']),'hangingVert'] = 1
-            # axi.plot(dfday['Dates'],dfday[f'{Pcols[ii]}sign'],'k')
-            # axi.plot(df1['Dates'],df1['hangingVert'],'.',color='gold')
-            axi.set_title(f'{binf["name"][0]} {binf["name"][1]} {Pcols[ii-1]}(blue), hangingVertical(red)')
-            axi.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            axi.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
-           # plt.show()
-        # exit(-1)
-        # ax[ii].set_title(f'Pressure(gray), Pressure gradients, dP/hr(b), nominal depth {pdepths[ii]}',fontsize=16)
-        # ax[ii].set_ylabel('Pressures',color='lightgray',fontsize=14)
-        # ax[ii].spines['left'].set_color('lightgray')
-        # secax=ax[ii].twinx()
-        # secax.plot(df1['Dates'],df1[f'd{pcol}dh'],'b.-')
-        # secax.spines['right'].set_color('blue')
-        # secax.grid()
-        # secax.set_ylabel('dP/dhr',color='b',fontsize=14)
-        # secax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
-        # secax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
-    plt.savefig(f'{figspath}/WARM_hangingVertical.png')
-    plt.show()
-    # exit(-1)
     return df1
 
 

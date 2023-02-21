@@ -334,7 +334,6 @@ def getSST(strdate='default'):
     noFile = True
     numDaysBack = 0
     while noFile:
-        print('line 320 in processfields', noFile,numDaysBack)
         print(theurl)
         if numDaysBack==7:
             break

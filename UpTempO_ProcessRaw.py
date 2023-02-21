@@ -62,6 +62,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     if 'Thull' in hinf.keys():
         tcolsorted.append('Thull')
     tcolsorted.extend([col for col in hinf.keys() if col.startswith('CTD-T')])
+    print('line 65 processRaw',tcolsorted)
 
     tcolsD = {}
     if 'tdepths' in binf:
@@ -70,8 +71,10 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
         CTDtdepths = binf['CTDtdepths']
     if 'HULLtdepths' in binf:
         HULLtdepths = binf['HULLtdepths']
+    print(tdepths)
 
     for tcol in tcolsorted:
+        tcol
         if tcol.startswith('CTD-T'):
             tcolsD[tcol] = CTDtdepths.pop(0)
         if tcol.startswith('T') and not tcol.startswith('Thull'):
@@ -106,6 +109,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     if 'ta_ind' in binf: fvars.append('Ta')
     if 'vbatt_ind' in binf: fvars.append('BATT')
     if 'sub_ind' in binf: fvars.append('SUB')
+    if 'gps_ind' in binf: fvars.append('GPSquality')
 
     df = df.filter(fvars,axis=1)
     # sort by Date in Ascending orderbuoys
@@ -122,7 +126,8 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     df = df[fvars]
     df.drop(columns='Date',inplace=True)
 
-    if bid in ['300234068519450','300534062895730']:
+    if bid in ['300234068519450','300534062895730','300534060251600']:
+        #        ,      , 2021-02
         pcols = [col for col in df.columns if col.startswith('P') or col.startswith('CTD-P')]
         for pcol in pcols:
             df[pcol] = df[pcol]/10
@@ -228,7 +233,7 @@ def processPG(bid):
     df = pd.read_csv(rawpath,parse_dates=['DeviceDateTime'])
     # drop columns that are never used
     dropcols = ['DataId','DeviceName']
-    for item in ['GpsQuality','SecondsToFix','TransmissionRetry','CtSensorError','SamplingRate','TimeToFirst3DFix']:
+    for item in ['SecondsToFix','TransmissionRetry','CtSensorError','SamplingRate','TimeToFirst3DFix']:
         print(item)
         if item in df.columns:
             dropcols.append(item)
@@ -236,6 +241,8 @@ def processPG(bid):
     dropcols.extend([col for col in df.columns if col.startswith('PodMag')])
     dropcols.extend([col for col in df.columns if 'Conductivity' in col])
     df.drop(columns=list(dropcols),inplace=True)
+    print(df.columns)
+    print()
     # opr=open(rawpath,'r')
     # data=opr.read()
     # opr.close()
@@ -264,7 +271,8 @@ def processPG(bid):
         #     if h.startswith('PressurePod'):
         #       header[ii]=f'{h[:-1]}{n}'
         #       n += 1
-
+    print(df.columns)
+    print('line 271')
     # data=data[1:]  # all but header line
     # data=[da for da in data if da]  # what does this do?
     #
@@ -290,7 +298,7 @@ def processPG(bid):
     # hinf=HC.PG_HeaderCodes(header)
     df.rename(columns=(dict(zip([col for col in df.columns],hinf.keys()))),inplace=True)
     print(df.columns)
-
+    # exit(-1)
     binf=BM.BuoyMaster(bid)
     processDATA(bid,df,hinf)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1
@@ -610,6 +618,12 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         if h == 'SUB':
             strcol="%d" % col
             lineout='% '+strcol+' = Submergence Percent'
+            webhead.append(lineout)
+            col+=1
+
+        if h == 'GPSquality':
+            strcol="%d" % col
+            lineout='% '+strcol+' = GPS quality'
             webhead.append(lineout)
             col+=1
 
