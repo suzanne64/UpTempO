@@ -61,12 +61,19 @@ def UpTempOArcticMap(strdate=None): #nors='n'):
     print(iceyy.shape)
     print(ice.shape)
     if ice is not None:
+        print('before contourf')
+        # fig5,ax5 = plt.subplots(1,1)
+        # # ax5.plot(ice.ravel())
+        # ch5 = ax5.imshow(ice,vmin=0,vmax=1)
+        # fig5.colorbar(ch5,ax=ax5)
+        # plt.show()
+        # exit(-1)
         ax1.contourf(icexx,iceyy,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
-                          transform=ccrs.Stereographic(**kw))   #use either colors or cmap
+                     transform=ccrs.Stereographic(**kw))   #use either colors or cmap
+        print('after contourf')
     else:
         ax1.text(10,88,'ICE data unavailable',color='k',fontsize=10,transform=ccrs.PlateCarree())
-    plt.show()
-    exit(-1)
+
     # fig1.colorbar(ch)        
     ax1.set_title(f'UpTempO Buoy Positions {objdate.month}/{objdate.day}/{objdate.year}',fontsize=20)
     

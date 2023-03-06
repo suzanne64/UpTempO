@@ -646,6 +646,7 @@ def PrevOverviewMap(strdate=None):
 
     ax = aplots.UpTempOArcticMap(strdate)
     shapes = {2019:'o', 2020:'s',2021:'d',2022:'.'}
+    print('line 649 in plots')
     # newline = '\n'
     # get last locations of each buoy we are currently following on buoysdate
     curbuoys,deadbuoys,orderbuoys,deadbuoys=BM.getBuoys()

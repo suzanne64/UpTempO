@@ -7,11 +7,12 @@ import UpTempO_Python as upp
 import UpTempO_HeaderCodes as HC
 import IABPplots as iplots
 import ArcticPlots as aplots
-# import ArcticPlots as aplots
+import PlottingFuncs as PF
 import matplotlib.pyplot as plt
 import datetime as dt
 from matplotlib.dates import (MONTHLY,DateFormatter,rrulewrapper,RRuleLocator,drange)
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import re
 import pandas as pd
 from scipy import stats
@@ -304,6 +305,135 @@ def TrackMaps(bid,path):
     print(abbv)
     plt.savefig(f'{path}/TrackByMonth'+abbv+'L2.png',bbox_inches='tight')
     plt.show()
+
+def TrackMaps2Atlantic(bid,path):
+
+    # ucols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    ucols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    bscalegray=[50.,100.,500.,1000.,2000.,3000.]
+    bscaleblack=[28.,60.]
+    deepfillcol='beige' 
+
+    # fig1, ax1 = plt.subplots(1,figsize=(6,6))
+    fig1, ax1 = plt.subplots(1,figsize=(8.3,10))
+    ax1 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
+    ax1.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45),color='gray')
+    ax1.add_feature(cfeature.LAND,facecolor='gray')
+    # ax1.add_feature(cfeature.OCEAN,facecolor='lightblue')
+    ax1.coastlines(resolution='50m',linewidth=0.5,color='darkgray')
+    kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
+    # both of these set_extent commands work well
+    # ax1.set_extent([-180,180,65,90],crs=ccrs.PlateCarree())
+    ax1.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
+
+    bath=np.loadtxt('/Users/suzanne/Google Drive/UpTempO/Bathymetry_Files/6.BATH-1041x1094.dat')
+    bxx=np.loadtxt('/Users/suzanne/Google Drive/UpTempO/Bathymetry_Files/6.BATHXX-1041x1094.dat')
+    byy=np.loadtxt('/Users/suzanne/Google Drive/UpTempO/Bathymetry_Files/6.BATHYY-1041x1094.dat')
+
+    # rot=55.   # this has Greenland pointing down.
+    # if rot:
+    #     sqbxx=np.zeros((1094,1041))
+    #     sqbyy=np.zeros((1094,1041))
+    #     for r in range(1094): sqbxx[r,:]=bxx
+    #     for r in range(1041): sqbyy[:,r]=byy
+    #     fbxx=sqbxx.flatten()
+    #     fbyy=sqbyy.flatten()
+    #     lat,lon=PF.XYtoLL(fbxx,fbyy,0.0)
+    #     bxx,byy=PF.LLtoXY(lat,lon,rot)
+    #     bxx=np.reshape(bxx,(1094,1041))
+    #     byy=np.reshape(byy,(1094,1041))
+        
+    ax1.contour(bxx*1000,byy*1000,-bath,bscalegray,colors='gray',linewidths=.5)
+    # bathc=ax1.contour(bxx,byy,-bath,bscalegray,colors='gray',linewidths=.5)
+    # if cdomain == 'UpTempO': pltt.contour(bxx,byy,-bath,bscaleblack,colors='black',linewidths=1)
+    ax1.contourf(bxx*1000,byy*1000,-bath,[3000.,9000.],colors=deepfillcol)
+    # ax1.axis('off')
+    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+
+    df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
+
+    for m in range(12):
+        cm=m+1
+        cdat=df['Month'] == cm  #data[data[:,imo] == cm,:]
+        plt.plot(df['Lon'][cdat],df['Lat'][cdat],'o',ms=3,color='k',transform=ccrs.PlateCarree())
+        plt.plot(df['Lon'][cdat],df['Lat'][cdat],'o',ms=2,color=ucols[m],transform=ccrs.PlateCarree())
+
+
+    binf=BM.BuoyMaster(bid)
+    startdate=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])}"
+    enddate  =f"{int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
+    # ax1.set_title(f"UpTempO {binf['name'][0]} #{binf['name'][1]} ({bid})\n{startdate} to {enddate}",fontsize=12)
+    ax1.set_title(f"UpTempO {binf['name'][0]} #{binf['name'][1]} ({bid}) {startdate} to {enddate}",fontsize=12)
+
+    outlabs=['Alaska','Russia','Greenland','85N','80N','75N','90E','135E','180E','135W','90W','45E','45W']
+    rot1=-20.0
+    suby=100.
+    outpos=[[-1400,2250,0,'w'],[1300,2250,0,'w'],[-1400,-1300,0,'w'],
+            [110,550.-suby,rot1,'k'],[280,1070-suby,rot1,'k'],[560-suby,1590-suby,rot1,'k'],
+            [700,10,0,'k'],[460,550,45,'k'],[-80,700,90,'k'],[-650,450,-45,'k'],[-900,10,0,'k'],
+            [480,-600,-45,'k'],[-590,-500,45,'k']]
+    for i,o in enumerate(outlabs):
+        if i <= 2: fs=14
+        else: fs=11
+        plt.text(outpos[i][0]*1000,outpos[i][1]*1000,outlabs[i],rotation=outpos[i][2],color=outpos[i][3],fontsize=fs)
+
+    abbv=binf['imeiabbv']
+    print(abbv,path)
+    plt.savefig(f'{path}/TrackByMonth{abbv}L2.png',bbox_inches='tight')
+    plt.show()
+
+
+
+# fig2, ax2 = plt.subplots(1,figsize=(8.3,10))
+# ax2 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
+# ax2.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45),color='gray')
+# ax2.add_feature(cfeature.LAND,facecolor='gray')
+# # ax1.add_feature(cfeature.OCEAN,facecolor='lightblue')
+# ax2.coastlines(resolution='50m',linewidth=0.5,color='darkgray')
+# ax2.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
+# kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
+# # ch = ax2.scatter(df1.loc[(df1['bathymetry']>=-75),'Lon'],
+# #                  df1.loc[(df1['bathymetry']>=-75),'Lat'],s=5,
+# #                c=df1.loc[(df1['bathymetry']>=-75),'bathymetry'],cmap='turbo',
+# #                transform=ccrs.PlateCarree(),vmin=-75,vmax=0) #norm=mpl.colors.LogNorm(vmin=0,vmax=20))
+# ch = ax2.scatter(df1['Lon'],df1['Lat'],s=5,c=df1['bathymetry'],cmap='turbo',
+#     plt=iplots.blankBathMap(cdomain='UpTempO')
+#     plt=PF.laloLines(plt,0,lats=[50.,60.,70.,75.,80.,85.])
+
+#     df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+
+#     df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
+
+#     for m in range(12):
+#         cm=m+1
+#         cdat=df['Month'] == cm  #data[data[:,imo] == cm,:]
+#         xar,yar=PF.LLtoXY(df['Lat'][cdat],df['Lon'][cdat],0.0)
+#         plt.plot(xar,yar,'o',ms=1.5,color='k')
+#         plt.plot(xar,yar,'o',ms=1,color=ucols[m])
+
+#     binf=BM.BuoyMaster(bid)
+#     startdate=f"{df['Month'].iloc[0]:02}/{df['Day'].iloc[0]:02}/{df['Year'].iloc[0]}"
+#     enddate  =f"{df['Month'].iloc[-1]:02}/{df['Day'].iloc[-1]:02}/{df['Year'].iloc[-1]}"
+#     titout='UpTempO '+binf['name'][0]+' #'+binf['name'][1]+' ('+bid+')  '+startdate+' to '+enddate
+
+#     outlabs=['Alaska','Russia','85N','80N','75N','90E','135E','180E','135W','90W']
+#     rot1=-20.0
+#     suby=100.
+#     outpos=[[-1400,2250,0,'w'],[1300.,2250,0,'w'],
+#             [110,550.-suby,rot1,'k'],[280,1070-suby,rot1,'k'],[560-suby,1590-suby,rot1,'k'],
+#             [700,10,0,'k'],[480,550,45,'k'],[-80,700,90,'k'],[-650,450,-45,'k'],[-900,10,0,'k']]
+#     for i,o in enumerate(outlabs):
+#         if i <= 1: fs=14
+#         else: fs=11
+#         plt.text(outpos[i][0],outpos[i][1],outlabs[i],rotation=outpos[i][2],color=outpos[i][3],fontsize=fs)
+
+
+#     plt.title(titout,fontsize=12)
+
+#     abbv=binf['imeiabbv']
+#     print(abbv)
+#     plt.savefig(f'{path}/TrackByMonth'+abbv+'L2.png',bbox_inches='tight')
+#     plt.show()
 
 
 def transferList(writ):

@@ -197,18 +197,8 @@ def getL1(filename, bid, figspath):
     # invalidate Px zero values (not including P0) and other pressure edits depending...
     for ii,pcol in enumerate(pcols):
         df.loc[df[pcol]==0,pcol] = np.nan
-        if bid in ['300234063991680']:
-            m = ((df[pcol] < pdepths[ii]-5) | (df[pcol] > pdepths[ii]+5))
-            df[pcol][m] = np.nan
-        if bid in ['300234064737080']:
-            m = ((df[pcol] < pdepths[ii]-50) | (df[pcol] > pdepths[ii]+50))
-            df[pcol][m] = np.nan
-            df.loc[(df['P1']>30),'P1'] = np.NaN
-        if bid in ['300234065419120']:  # 2017-05
-            m = ((df[pcol] > pdepths[ii]+4))
-            df[pcol][m] = np.nan
 
-    # temperature data editing
+    # data editing
     if '300234063991680' in bid:  # 2016 07
         # Drop first row, where temps have not stablized yet
         df.drop(index=df.index[0],axis=0,inplace=True)
@@ -218,8 +208,12 @@ def getL1(filename, bid, figspath):
             if 'T0' not in tcol:
                 m = ((df['Dates']<=dt.datetime(2016,9,5,21,0,0)) | (df['Dates']>=dt.datetime(2016,10,20)))
                 df[tcol][m] = np.NaN
+        df.loc[(df['Dates']>dt.datetime(2016,10,22)),'P3'] = np.nan
+        for ii,pcol in enumerate(pcols):
+            df.loc[(df[pcol] < pdepths[ii]-5) | (df[pcol] > pdepths[ii]+5),pcol] = np.nan
 
     if '300234062491420' in bid:  # 2016 04 
+        # these TO are not wrapped. 
         for tcol in tcols:
             if 'T0' in tcol:
                 df.loc[df['Dates']>dt.datetime(2018,11,5,18,0,0),tcol] = np.NaN
@@ -233,6 +227,9 @@ def getL1(filename, bid, figspath):
         df.loc[(df['T0']>40),'T0'] -= (maxValue - minValue)
         # remove erroneous
         df.loc[(df['Dates']<dt.datetime(2017,11,25))  & (df['T0']<-12),'T0'] = np.NaN
+        for ii,pcol in enumerate(pcols):
+            df.loc[(df[pcol] < pdepths[ii]-50) | (df[pcol] > pdepths[ii]+50),pcol] = np.nan
+        df.loc[(df['P1']>30),'P1'] = np.NaN
         
     if '300234064739080' in bid:  # 2017 W6 
         #True Temperature = reported value - maximum allowed value - minimum allowed value  Wrapped Temps
@@ -263,10 +260,14 @@ def getL1(filename, bid, figspath):
         for pcol in pcols:
             df.loc[(df[pcol]<0),pcol] = np.nan
         df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
+        for tcol in tcols:
+            df.loc[:,tcol] += 0.2
     
     if '300234060320930' in bid:  # 2019 04
         df.loc[(df['P1']<14)] = np.nan
         df = df.loc[(df['Dates']<=dt.datetime(2020,8,1))]
+        for tcol in tcols:
+            df.loc[:,tcol] += 0.2
 
     if '300234068719480' in bid:  # 2019 03
         for pcol in pcols:
@@ -325,6 +326,9 @@ def getL1(filename, bid, figspath):
         
         df.loc[(df['Dates']>dt.datetime(2021,8,31)),'P2'] = np.nan
         df['T0'].iloc[0] = np.nan
+        # 10m T and S are bad, but we want to keep these
+        df['T4'] = np.nan
+        df['S1'] = np.nan
         
     if '300534060251600' in bid:  # 2021 02
         df.loc[(df['GPSquality']<3),:] = np.nan
@@ -333,6 +337,7 @@ def getL1(filename, bid, figspath):
         print(df['T0'].max())
         print(df['T0'].min())
         df.loc[(df['T0']>20),'T0'] -= (df['T0'].max() - df['T0'].min())
+        df['T0'].iloc[0] = np.nan
         df.loc[(df['P1']<7.5),'P1'] = np.nan
         df.loc[(df['P2']<15),'P2'] = np.nan
         df.loc[(df['P3']<30),'P3'] = np.nan
@@ -442,10 +447,17 @@ def getL1(filename, bid, figspath):
     
     
     # drop a column if all values are NaN
-    df.dropna(axis=1,how='all',inplace=True)
+    if '300534060649670' not in bid:  # we want to keep 'T4' and 'S2' in 2019_05
+        df.dropna(axis=1,how='all',inplace=True)
     # drop a row if all values are NaN, reset index
     df.dropna(axis=0,how='all',inplace=True)
     df=df.reset_index(drop=True)
+    
+    # fig,ax = plt.subplots(1,1,figsize=(12,6))
+    # ch = ax.scatter(df['Lon'],df['Lat'],s=4,c=df['Day'],cmap='turbo')
+    # fig.colorbar(ch,ax=ax)
+    # plt.show()
+    # exit(-1)
     
     # check influence of 'correcting' for SLP
     # if bid in ['300234060320940','300234060320930']:  # 2019 04,05
@@ -1291,9 +1303,6 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
         plt.show()
         df1.drop(['dPdh','dh'],axis=1,inplace=True)
     df1.drop(columns=['mask'],inplace=True)
-    # if '300234063991680' in bid:  # 2016 07
-    #     df1.loc[(df1['dOP60']>4),Pcols] = np.nan
-    #     df1.loc[(df1['dOP60']>4),[col for col in df1.columns if col.startswith('dOP')]] = np.nan
 
     # if len(Pcols)>1:  
     #     fig,ax = plt.subplots(len(Pcols)-1,1,figsize=(12,12),sharex=True)   
@@ -1360,7 +1369,7 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
     # 2. find envelope of min and max of non-spike points within 2day and 6m 
     #   get temperatures at 1m intervales in depth, make new dataframe 
     dfT = df1[[col for col in Tcols]]
-    dfD = df1[[col for col in Dcols]]
+    dfD = df1[[col for col in Dcols if 'Dsst' not in col]]
     print('Tcols',Tcols)
     print('Dcols',Dcols)
     # fig10,ax10 = plt.subplots(2,1,sharex=True)
@@ -1436,7 +1445,10 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         secax.plot(df1['Dates'],-1*df1[f'T{col[0][1:]}range'].div(2),'b')   
         
         secax.set_ylim(minY,maxY)
-        ax.set_xlim([df1['Dates'].iloc[0],df1.loc[(df1[f'T{col[0][1:]}range'].last_valid_index()),'Dates']])
+        try:
+            ax.set_xlim([df1['Dates'].iloc[0],df1.loc[(df1[f'T{col[0][1:]}range'].last_valid_index()),'Dates']])
+        except:
+            ax.set_xlim([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]])
         ax.set_title(f'Finding Spikes for {col[0]}: temperature(k), temperature range(g), spikes(r/b), half range(r/b)')
         # plt.show()
         
