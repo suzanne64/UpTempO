@@ -20,6 +20,10 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
 
     #find variables to look for
     fvars=['Date','Lat','Lon']
+    print(bid,binf)
+    print()
+    print(hinf)
+    print()
 
     pcols = [col for col in hinf.keys() if col.startswith('P') or col.startswith('CTD-P')]
     pcolsD = {}
@@ -27,7 +31,6 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
         CTDpdepths = binf['CTDpdepths']
     if 'pdepths' in binf:
         pdepths = binf['pdepths']
-
     for pcol in pcols:
         if pcol.startswith('CTD-P'):
             pcolsD[pcol] = CTDpdepths.pop(0)
@@ -126,8 +129,8 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     df = df[fvars]
     df.drop(columns='Date',inplace=True)
 
-    if bid in ['300234068519450','300534062895730','300534060251600']:
-        #        ,      , 2021-02
+    if bid in ['300234068519450','300534062895730','300534060251600','300534060051570']:
+        #  2019-02,  2022-12, 2021-02, 2021-03
         pcols = [col for col in df.columns if col.startswith('P') or col.startswith('CTD-P')]
         for pcol in pcols:
             df[pcol] = df[pcol]/10
@@ -241,8 +244,11 @@ def processPG(bid):
     dropcols.extend([col for col in df.columns if col.startswith('PodMag')])
     dropcols.extend([col for col in df.columns if 'Conductivity' in col])
     df.drop(columns=list(dropcols),inplace=True)
+    
+    # drop a column if all values are NaN
+    df.dropna(axis=1,how='all',inplace=True)
     print(df.columns)
-    print()
+
     # opr=open(rawpath,'r')
     # data=opr.read()
     # opr.close()
@@ -297,9 +303,12 @@ def processPG(bid):
     hinf=HC.PG_HeaderCodes([col for col in df.columns])
     # hinf=HC.PG_HeaderCodes(header)
     df.rename(columns=(dict(zip([col for col in df.columns],hinf.keys()))),inplace=True)
-    print(df.columns)
-    # exit(-1)
+    print('after rename',df.columns)
+    print()
     binf=BM.BuoyMaster(bid)
+    print()
+    print(binf)
+    
     processDATA(bid,df,hinf)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1
                                        #pmod=0.1 by default (value to multiply Ocean Pressure by)
@@ -640,7 +649,29 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
 
     webhead.append('%END')
 
-
+    # for downloading files later (mar 2023) to get GPSQuality, need to cut off data 
+    #    after we 'stopped listening'
+    if bid in '300534060649670':  # 2021 01
+        df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
+        df.drop( df[df['Dates']>dt.datetime(2022,3,1)].index, inplace=True)
+        df.drop(columns=['Dates'],inplace=True)
+    if bid in '300534060251600':  # 2021 02
+        df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
+        df.drop( df[df['Dates']>dt.datetime(2021,12,24)].index, inplace=True)
+        df.drop(columns=['Dates'],inplace=True)
+    if bid in '300534060051570':  # 2021 03
+        df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
+        df.drop( df[df['Dates']>dt.datetime(2021,11,1)].index, inplace=True)
+        df.drop(columns=['Dates'],inplace=True)
+    if bid in '300534062158480':  # 2021 04
+        df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
+        df.drop( df[df['Dates']>dt.datetime(2021,10,24)].index, inplace=True)
+        df.drop(columns=['Dates'],inplace=True)
+    if bid in '300534062158460':  # 2021 05
+        df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
+        df.drop( df[df['Dates']>dt.datetime(2021,11,24)].index, inplace=True)
+        df.drop(columns=['Dates'],inplace=True)
+        
     # opw=open('UPTEMPO/Processed_Data/'+bid+'.dat','w')
     # for h in have: opw.write(h+'\n')
     # opw.close()

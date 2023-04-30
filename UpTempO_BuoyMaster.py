@@ -680,6 +680,7 @@ def BuoyMaster(bid):
                           'vbatt_ind':23,
                           'sub_ind':24},
 
+#  --------------------------2016 buoys-------------------------------------   
 
     '300234063991680':{'notes':'Amundsen 2016 07',
                            'name':['2016','7'],
@@ -768,6 +769,48 @@ def BuoyMaster(bid):
                            'bp_ind':22,
                            'vbatt_ind':23,
                            'sub_ind':24},
+
+#  --------------------------2014 buoys-------------------------------------   
+    '300234060236150':{'notes':'Mirai 2014 13',
+                           'name':['2014','13'],
+			               'brand':'Marlin-Yug',
+                           'imeiabbv':'6150',
+                           'wmo':'48678',
+                           'pgname':'',
+                           'vessel':'Mirai',
+                           'deploymentDate':'9/06/2014',
+                           'deploymentLon':-162.9634,
+                           'deploymentLat':74.3794,
+                           'pdepths':[20, 40, 60],
+                           'tdepths':[0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 25, 30, 35, 40, 45, 50, 55, 60],
+                           'P1_ind':6,
+                           'T1_ind':9,
+                           'bp_ind':22,
+                           'vbatt_ind':23,
+                           'sub_ind':24},
+
+    '300234060340370':{'notes':'Amundsen 2014 11',
+                           'name':['2014','11'],
+			               'brand':'MetOcean',
+                           'imeiabbv':'0370',
+                           'wmo':'48673',
+                           'pgname':'',
+                           'vessel':'Amundsen',
+                           'deploymentDate':'8/30/2014',
+                           'deploymentLon':-128.5544 ,
+                           'deploymentLat':73.2933,
+                           'pdepths':[15, 30],
+                           'tdepths':[0, 2.5, 5.0, 7.5, 10., 15., 20., 25., 30.],
+                           'P1_ind':6,
+                           'T1_ind':9,
+                           'bp_ind':22,
+                           'vbatt_ind':23,
+                           'sub_ind':24},
+
+
+
+
+
 
 ##     '300234064735100':{'notes':'JWARM 2018 #1',
 #                            'name':['2018','JW-1'],
