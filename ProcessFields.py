@@ -13,6 +13,8 @@ import urllib
 import requests
 import matplotlib.pyplot as plt
 from nsidc_download_0081_v02 import nsidc_download_0081_v02
+import scipy.io as sio
+from itertools import chain
 
 #======= Get and Process NSIDC ==============
 def getICE(strdate='default',nors='n',src='nsidc-0081'):
@@ -75,6 +77,137 @@ def getICE(strdate='default',nors='n',src='nsidc-0081'):
                 numDaysBack += 1
 
     return strdate,ice,icexx,iceyy
+
+
+# #======= Get and Process data from Jim Thomson's swifts ==============
+# def getSWIFT(swiftpath,swiftfile):
+
+#     # swiftpath = f'swift_telemetry' 
+
+# # # FOR REAL
+# #     startswift = dt.datetime(2023,6,1) #today - dt.timedelta(hours=int(args.hourstoPlot))  #### we will this line when new data are available.
+# #     # use this starttime if needing to test code with data.
+# #     # startswift = dt.datetime(2017,1,1) #today - dt.timedelta(hours=int(args.hourstoPlot))  #### we will this line when new data are available.
+# #     starttime = f'{startswift.year}-{startswift.month:02d}-{startswift.day:02d}T00:00:00'
+# #     endtime = ''    # leaving endtime blank, says get data up to present.
+
+# #     allbatterylevels, lasttime, lastlat, lastlon = eng.pullSWIFTtelemetry(ID,starttime,endtime)
+# #     swiftpath = swiftpath.strip("'")
+# #     print('swiftpath',swiftpath,allbatterylevels, lasttime, lastlat, lastlon)
+
+# #     if endtime=='':
+# #         swiftfile = f'buoy-microSWIFT {ID}-start-{starttime}-end-None.mat'
+# #     print(f'{swiftpath}/{swiftfile}')
+# #     if os.path.exists(f'{swiftpath}/{swiftfile}'):
+#         # swift_struct = sio.loadmat(f'{swiftpath}/{swiftfile}')
+#         # SWIFT = swift_struct['SWIFT']
+#         # time = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['time'])])])
+#         # datetime = [dt.datetime.fromordinal(int(t)) + dt.timedelta(t%1) - dt.timedelta(days=366) for t in time]  #
+#         # lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
+#         # lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
+#         # print(lon)
+#         # exit(-1)
+
+
+#         filecsv = f'{swiftpath}/csv/{os.path.splitext(swiftfile)[0]}.csv'
+#         print(filecsv)
+#         # try:
+#         swift_struct = sio.loadmat(f'{swiftpath}/{swiftfile}')
+#         SWIFT = swift_struct['SWIFT']
+
+#         # time, lat, lon are all the same length.   CTdepth,salinity,watertemp can be multiple depths at same time, position
+#         time = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['time'])])])
+#         datetime = [dt.datetime.fromordinal(int(t)) + dt.timedelta(t%1) - dt.timedelta(days=366) for t in time]  #
+#         lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
+#         lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
+
+#         # make a dictionary relating times to d/s/t
+#         timedepth = {}
+#         for ii in range(lat.shape[0]):
+#             timedepth[ii] = {'time':SWIFT[0,:]['time'][ii].ravel(),
+#                                    'CTdepth':SWIFT[0,:]['CTdepth'][ii].ravel(),
+#                                    'Salinity':SWIFT[0,:]['salinity'][ii].ravel(),
+#                                    'WaterTemp':SWIFT[0,:]['watertemp'][ii].ravel()
+#                                      }
+
+#         # find all unique depths
+#         CTdepth = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['CTdepth'])])])
+#         unique, counts = np.unique(CTdepth, return_counts=True)
+#         ndepths = len(unique)
+#         print('line 780',unique,ndepths)
+#         # get column names for df
+#         columns = ['DateTime','Lat','Lon']
+#         [columns.append(f'CTdepth-{ii}') for ii in range(ndepths)]
+#         [columns.append(f'WaterTemp-{ii}') for ii in range(ndepths)]
+#         [columns.append(f'Salinity-{ii}') for ii in range(ndepths)]
+#         # create dataFrame
+#         dfSwift = pd.DataFrame(columns=columns)
+
+#         # # # to check in matlab datevec(SWIFT(end).time)
+#         dfSwift['DateTime'] = datetime
+#         dfSwift['DateTime'] = dfSwift['DateTime'].dt.round('1s')
+
+#         dfSwift['Lat'] = lat
+#         dfSwift['Lon'] = lon
+#         # dfSwift['Time'] = np.nan
+#         for ii in range(ndepths):
+#             dfSwift[f'CTdepth-{ii}'] = np.nan
+#             dfSwift[f'WaterTemp-{ii}'] = np.nan
+#             dfSwift[f'Salinity-{ii}'] = np.nan
+
+#         for k,v in timedepth.items():
+
+#             for ii in range(ndepths):
+#                 if ii==0:
+#                     # print(dfSwift[k,f'CTdepth-{ii}'])
+#                     dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+#                     # print(dfSwift[f'CTdepth-{ii}',0])
+#                     dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+#                     dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+#                 else:
+#                     try:
+#                         dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+#                     except:
+#                         pass
+#                     try:
+#                         dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+#                     except:
+#                         pass
+#                     try:
+#                         dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+#                     except:
+#                         pass
+#         print(dfSwift.head())
+
+#         # reduce to three decimals
+#         dfSwift['Lat'] = dfSwift['Lat'].map('{:.03f}'.format).astype(float)
+#         dfSwift['Lon'] = dfSwift['Lon'].map('{:.03f}'.format).astype(float)
+#         for ii in range(ndepths):
+#             dfSwift[f'WaterTemp-{ii}'] = dfSwift[f'WaterTemp-{ii}'].map('{:.03f}'.format).astype(float)
+#             dfSwift[f'Salinity-{ii}'] = dfSwift[f'Salinity-{ii}'].map('{:.03f}'.format).astype(float)
+#             # exit(-1)
+#         # if shallowest T/S is invalid, replace with next depth down
+#         for ii in range(1,ndepths):
+#             dfSwift['CTdepth-0'].fillna(dfSwift[f'CTdepth-{ii}'],inplace=True)
+#             dfSwift['WaterTemp-0'].fillna(dfSwift[f'WaterTemp-{ii}'],inplace=True)
+#             dfSwift['Salinity-0'].fillna(dfSwift[f'Salinity-{ii}'],inplace=True)
+#             dfSwift.drop(columns=[f'CTdepth-{ii}',f'Salinity-{ii}',f'WaterTemp-{ii}'],inplace=True)
+#         print('line 838')
+#         print(dfSwift.head())
+#         dfSwift.rename(columns={'CTdepth-0':'Depth', 'Salinity-0':'Salinity','WaterTemp-0':'Temperature'},inplace=True)
+#         last_col = dfSwift.pop('Depth')
+#         dfSwift = pd.concat([dfSwift,last_col],1)
+#         # set salinity<10 and temperature>10 to np.nanmax
+#         dfSwift.loc[dfSwift['Salinity']<10,'Salinity'] = np.nan
+#         dfSwift.loc[dfSwift['Temperature']>10,'Temperature'] = np.nan
+
+#         print('line 847')
+#         print(dfSwift.head())
+
+#     else:
+#         dfSwift = pd.DataFrame(columns=['DateTime','Lat','Lon','WaterTemp','Salinity','Depth'])
+
+#     return dfSwift
 
 #======= Get and Process NSIDC ==============
 # WErmold code downloading .bin files from sidads.colorado.edu

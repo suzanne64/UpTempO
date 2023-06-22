@@ -29,13 +29,14 @@ def StatsReport(lupdate):
 
     for b in orderbuoys:
         if (b in curbuoys) or (b in newdead):
-            # print(b)
+            print(b, 'line 32 in UpTempO_Python.py')
             if b in haveinf:
                 statline=haveinf[b]
             else: statline=''
 
             binf=BM.BuoyMaster(b)  # buoy info
-
+            print()
+            print(statline)
             try:
                 abbv,byear,depdate,source=curbuoys[b]
             except:
@@ -77,7 +78,8 @@ def StatsReport(lupdate):
                 statlist=[binf['name'][1],binf['vessel'],depdate,depll,'','','',abbv,'NA','0',binf['name'][0],b,'','1']
             else:
                 statlist=statline.split(',')
-
+            print(statlist)
+            print()
             if b in newdead: statlist[-5]='1'
 
 
@@ -96,7 +98,8 @@ def StatsReport(lupdate):
             print(b)
             print(df.iloc[-1])
             lastdate=f"{df['Month'].iloc[-1]:02}/{df['Day'].iloc[-1]:02}/{df['Year'].iloc[-1]}"
-
+            print(binf['vessel'],lastdate)
+            print()
             # flastlon=float(lastlon)
             # flastlat=float(lastlat)
             if lastlon < 0: slastlon="%.2f" % (-lastlon)
@@ -108,7 +111,10 @@ def StatsReport(lupdate):
             else: eorw='E'
 
             lastll=slastlat+nors+slastlon+eorw
-            lastbatt=str(df['BATT'].iloc[-1])
+            if 'BATT' in df.columns:
+                lastbatt=str(df['BATT'].iloc[-1])
+            else:
+                lastbatt = 'NA'
 
             depdate=depdate.split(' ')[0]
             amlistening=binf['listening']
@@ -116,13 +122,15 @@ def StatsReport(lupdate):
             statlist[4]=lastdate
             statlist[5]=lastll
             statlist[6]=lupdate
-            statlist[8]=lastbatt
+            if 'BATT' in df.columns:
+                statlist[8]=lastbatt
 
             if statlist[12] == 'NA' or not statlist[12]:
                 # wmo=BT.lookupWMO(b)
                 statlist[12]=binf['wmo']
-            statlist[13]=amlistening
+            statlist[14]=amlistening
             print(b)
+            print('new statline')
             print(statlist)
             jout=','.join(statlist)
             haveinf[b]=jout
@@ -131,6 +139,7 @@ def StatsReport(lupdate):
     opw=open('UPTEMPO/WebPlots/STATS-REPORT.txt','w')
     for b in orderbuoys:
         opw.write(haveinf[b]+'\n')
+        print(haveinf[b])
     opw.close()
 
 

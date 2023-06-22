@@ -18,33 +18,39 @@ import pandas as pd
 from scipy import stats
 from haversine import haversine
 
-def TimeSeriesPlots(bid,path,quan='Temp'):
+def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdepths=None):
     print(f'plotting {quan} Time Series for {bid}')
+
     #quan = 'Temp' or 'Pressure'
 
     # cols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     cols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
     binf=BM.BuoyMaster(bid)
+
     deplat = binf['deploymentLat']
     deplon = binf['deploymentLon']
 
     buoylab='UpTempO '+binf['name'][0]+' #'+binf['name'][1]
     abbv=binf['imeiabbv']
 
-    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
-    tdepths = df['tdepths'].dropna()
-    print('temperature nominal depths',tdepths)
-    try:
-        pdepths = df['pdepths']
-        print('pressure nominal depths',pdepths)
-    except:
-        pass
-    try:
-        sdepths = df['sdepths']
-        print('salinity nominal depths',pdepths)
-    except:
-        pass
+    if df is None:
+        df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+
+    if 'Temperature' in quan:
+        if tdepths is None:
+            tdepths = df['tdepths'].dropna()
+            print('temperature nominal depths',tdepths)
+
+    if 'Pressure' in quan:
+        if pdepths is None:
+            pdepths = df['pdepths']
+            print('pressure nominal depths',pdepths)
+
+    if 'Salinity' in quan:
+        if sdepths is None:
+            sdepths = df['sdepths']
+            print('salinity nominal depths',pdepths)
 
 
     print(df.head())
@@ -100,7 +106,7 @@ def TimeSeriesPlots(bid,path,quan='Temp'):
 
     if quan == 'Tilt':
         tiltcols = [col for col in df.columns if col.startswith('Tilt')]
-        yaxlab='Tilt'
+        yaxlab='Tilt (degrees from vertical)'
         # ax.set_ylim(20,40)
 
         for ii,tiltcol in enumerate(tiltcols):
@@ -111,22 +117,22 @@ def TimeSeriesPlots(bid,path,quan='Temp'):
     ax.set_ylabel(yaxlab)
     plt.subplots_adjust(bottom=0.15)
     plt.grid(True)
-    plt.savefig(f'{path}/{quan}Series{abbv}L2.png')
+    plt.savefig(f'{path}/{quan}Series{abbv}.png')
     plt.show()
 
-    # opr=open('UPTEMPO/transferRecord.dat','r')
-    # tr=opr.read()
-    # opr.close()
-    # tr=tr.split('\n')
-    #
-    # outwrite='UPTEMPO/WebPlots/'+quan+'Series'+abbv+'.png WebPlots/'+quan+'Series'+abbv+'.png'
-    # if outwrite not in tr:
-    #     tr.append(outwrite)
-    #     opw=open('UPTEMPO/transferRecord.dat','w')
-    #     for t in tr: opw.write(t+'\n')
-    #     opw.close()
+    opr=open('UPTEMPO/transferRecord.dat','r')
+    tr=opr.read()
+    opr.close()
+    tr=tr.split('\n')
+    
+    outwrite='UPTEMPO/WebPlots/'+quan+'Series'+abbv+'.png WebPlots/'+quan+'Series'+abbv+'.png'
+    if outwrite not in tr:
+        tr.append(outwrite)
+        opw=open('UPTEMPO/transferRecord.dat','w')
+        for t in tr: opw.write(t+'\n')
+        opw.close()
 
-def VelocitySeries(bid,path):
+def VelocitySeries(bid,path,df=None):
 
     binf=BM.BuoyMaster(bid)
     deplat = binf['deploymentLat']
@@ -135,7 +141,8 @@ def VelocitySeries(bid,path):
     buoylab='UpTempO '+binf['name'][0]+' #'+binf['name'][1]
     abbv=binf['imeiabbv']
 
-    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+    if df is None:
+        df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
     print(df.head())
     print()
     df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
@@ -198,12 +205,24 @@ def VelocitySeries(bid,path):
     ax.set_ylabel('Velocity (m/s)')
     plt.subplots_adjust(bottom=0.15)
     plt.grid(True)
-    plt.savefig(f'{path}/VelocitySeries{abbv}L2.png')
+    plt.savefig(f'{path}/VelocitySeries{abbv}.png')
 
     plt.show()
 
+    opr=open('UPTEMPO/transferRecord.dat','r')
+    tr=opr.read()
+    opr.close()
+    tr=tr.split('\n')
 
-def Batt_Sub(bid,path):
+    outwrite='UPTEMPO/WebPlots/VelocitySeries'+abbv+'.png WebPlots/VelocitySeries'+abbv+'.png'
+    if outwrite not in tr:
+        tr.append(outwrite)
+        opw=open('UPTEMPO/transferRecord.dat','w')
+        for t in tr: opw.write(t+'\n')
+        opw.close()
+
+
+def Batt_Sub(bid,path,df=None):
     print(f'plotting Battery Voltage and Submergence for {bid}')
     binf=BM.BuoyMaster(bid)
     deplat = binf['deploymentLat']
@@ -212,7 +231,8 @@ def Batt_Sub(bid,path):
     buoylab='UpTempO '+binf['name'][0]+' #'+binf['name'][1]
     abbv=binf['imeiabbv']
 
-    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+    if df is None:
+        df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
 
     df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
 
@@ -259,11 +279,23 @@ def Batt_Sub(bid,path):
     if 'SUB' in df.columns and 'BATT' in df.columns:
         datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
         plt.title(buoylab+' ('+bid+') '+'Submergence Percent and Battery Voltage:'+datelab,fontsize=20)
-    plt.savefig(f'{path}/Submergence{abbv}L2.png')
+    plt.savefig(f'{path}/Submergence{abbv}.png')
 
     plt.show()
 
-def TrackMaps(bid,path):
+    opr=open('UPTEMPO/transferRecord.dat','r')
+    tr=opr.read()
+    opr.close()
+    tr=tr.split('\n')
+
+    outwrite='UPTEMPO/WebPlots/Submergence'+abbv+'.png WebPlots/Submergence'+abbv+'.png'
+    if outwrite not in tr:
+        tr.append(outwrite)
+        opw=open('UPTEMPO/transferRecord.dat','w')
+        for t in tr: opw.write(t+'\n')
+        opw.close()
+
+def TrackMaps(bid,path,df=None):
 
     # ucols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     ucols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
@@ -271,20 +303,28 @@ def TrackMaps(bid,path):
     plt=iplots.blankBathMap(cdomain='UpTempO')
     plt=PF.laloLines(plt,0,lats=[50.,60.,70.,75.,80.,85.])
 
-    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+    if df is None:
+        df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
 
     df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
+
 
     for m in range(12):
         cm=m+1
         cdat=df['Month'] == cm  #data[data[:,imo] == cm,:]
         xar,yar=PF.LLtoXY(df['Lat'][cdat],df['Lon'][cdat],0.0)
-        plt.plot(xar,yar,'o',ms=1.5,color='k')
-        plt.plot(xar,yar,'o',ms=1,color=ucols[m])
+        plt.plot(xar,yar,'o',ms=1.5,color='k',zorder=1)
+        plt.plot(xar,yar,'o',ms=1,color=ucols[m],zorder=1)
 
+    # plot the flag at end of track
+    print(df['Lat'].iloc[-1],df['Lon'].iloc[-1])
+    xf,yf=PF.LLtoXY([df['Lat'].iloc[-1]],[df['Lon'].iloc[-1]],0.0)
+    plt.plot([xf,xf],[yf,yf+80],'k',linewidth=0.6,zorder=2)
+    plt.scatter(xf+18,yf+80,s=40,c='r',marker='>',edgecolors='k',zorder=2)
+    
     binf=BM.BuoyMaster(bid)
-    startdate=f"{df['Month'].iloc[0]:02}/{df['Day'].iloc[0]:02}/{df['Year'].iloc[0]}"
-    enddate  =f"{df['Month'].iloc[-1]:02}/{df['Day'].iloc[-1]:02}/{df['Year'].iloc[-1]}"
+    startdate=f"{int(df['Month'].iloc[0]):02d}/{int(df['Day'].iloc[0]):02d}/{int(df['Year'].iloc[0])}"
+    enddate  =f"{int(df['Month'].iloc[-1]):02d}/{int(df['Day'].iloc[-1]):02d}/{int(df['Year'].iloc[-1])}"
     titout='UpTempO '+binf['name'][0]+' #'+binf['name'][1]+' ('+bid+')  '+startdate+' to '+enddate
 
     outlabs=['Alaska','Russia','85N','80N','75N','90E','135E','180E','135W','90W']
@@ -303,7 +343,7 @@ def TrackMaps(bid,path):
 
     abbv=binf['imeiabbv']
     print(abbv)
-    plt.savefig(f'{path}/TrackByMonth'+abbv+'L2.png',bbox_inches='tight')
+    plt.savefig(f'{path}/TrackByMonth'+abbv+'.png',bbox_inches='tight')
     plt.show()
 
 def TrackMaps2Atlantic(bid,path):
@@ -379,9 +419,11 @@ def TrackMaps2Atlantic(bid,path):
 
     abbv=binf['imeiabbv']
     print(abbv,path)
-    plt.savefig(f'{path}/TrackByMonth{abbv}L2.png',bbox_inches='tight')
+    plt.savefig(f'{path}/TrackByMonth{abbv}.png',bbox_inches='tight')
     plt.show()
 
+    outwrite='UPTEMPO/WebPlots/TrackByMonth'+abbv+'.png WebPlots/TrackByMonth'+abbv+'.png'
+    transferList(outwrite)
 
 
 # fig2, ax2 = plt.subplots(1,figsize=(8.3,10))
@@ -432,7 +474,7 @@ def TrackMaps2Atlantic(bid,path):
 
 #     abbv=binf['imeiabbv']
 #     print(abbv)
-#     plt.savefig(f'{path}/TrackByMonth'+abbv+'L2.png',bbox_inches='tight')
+#     plt.savefig(f'{path}/TrackByMonth'+abbv+'.png',bbox_inches='tight')
 #     plt.show()
 
 

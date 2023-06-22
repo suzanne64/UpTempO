@@ -71,7 +71,15 @@ def PG_HeaderCodes(header):
            'TiltPod1':'Tilt1','TiltPod2':'Tilt2','TiltPod3':'Tilt3','TiltPod4':'Tilt4','TiltPod5':'Tilt5','TiltPod6':'Tilt6',
            'TiltPod7':'Tilt7','TiltPod8':'Tilt8','TiltPod9':'Tilt9','TiltPod10':'Tilt10','TiltPod11':'Tilt11','TiltPod12':'Tilt12',
            'AirTemp':'Ta',
-           'AccelerometerVariance':'Accelerometer'}
+           'AccelerometerVariance':'Accelerometer',
+           
+           # microSwift variables
+           'CTdepth-0':'D0','CTdepth-1':'D1',
+           'WaterTemp-0':'T0','WaterTemp-1':'T1',
+           'Salinity-0':'S0','Salinity-1':'S1',
+           'DriftSpd-0':'spd0','DriftSpd-1':'spd1',
+           'DriftDirT-0':'dir0','DriftDirT-1':'dir1',
+           }
 
 
     hinds={}

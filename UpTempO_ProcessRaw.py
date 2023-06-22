@@ -9,20 +9,20 @@ import UpTempO_HeaderCodes as HC
 import UpTempO_Python as upy
 import numpy as np
 import pandas as pd
+import scipy.io as sio
+from itertools import chain
+import matlab.engine
 
-
-def processDATA(bid,df,hinf,fts=1,pmod='PG'):
+def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
 
     binf=BM.BuoyMaster(bid)
-
+    print(binf)
     if bid == '300534062158480' or bid == '300534062158460':
         binf['tdepths'] = [binf['tdepths'][-1]]  # all the data in Temperature0cm col are null, col has been removed
 
     #find variables to look for
     fvars=['Date','Lat','Lon']
     print(bid,binf)
-    print()
-    print(hinf)
     print()
 
     pcols = [col for col in hinf.keys() if col.startswith('P') or col.startswith('CTD-P')]
@@ -38,7 +38,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
             pcolsD[pcol] = pdepths.pop(0)
     pcolsd = dict(sorted(pcolsD.items(), key=lambda item:item[1]))
     fvars.extend(pcolsD.keys())
-
+    print('fvars after pcols',fvars)
     # # depths
     # if 'ddepths' in binf:
     #     tdeps=binf['tdepths']
@@ -65,7 +65,6 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     if 'Thull' in hinf.keys():
         tcolsorted.append('Thull')
     tcolsorted.extend([col for col in hinf.keys() if col.startswith('CTD-T')])
-    print('line 65 processRaw',tcolsorted)
 
     tcolsD = {}
     if 'tdepths' in binf:
@@ -74,7 +73,6 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
         CTDtdepths = binf['CTDtdepths']
     if 'HULLtdepths' in binf:
         HULLtdepths = binf['HULLtdepths']
-    print(tdepths)
 
     for tcol in tcolsorted:
         tcol
@@ -86,6 +84,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
             tcolsD[tcol] = HULLtdepths.pop(0)
     tcolsD = dict(sorted(tcolsD.items(), key=lambda item:item[1]))
     fvars.extend(tcolsD.keys())
+    print('fvars after tcols',fvars)
 
     # salinities
     scols = [col for col in hinf.keys() if (col.startswith('S') or col.startswith('CTD-S')) and 'SUB' not in col]
@@ -106,6 +105,16 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
             scolsD[scol] = HULLsdepths.pop(0)
     scolsD = dict(sorted(scolsD.items(), key=lambda item:item[1]))
     fvars.extend(scolsD.keys())
+    print('fvars after scols',fvars)
+    
+    # microSWIFT drifters include speed and direction
+    if 'spddepths' in binf:
+        spdcols = [col for col in hinf.keys() if col.startswith('spd')]
+        fvars.extend(spdcols)
+    if 'dirdepths' in binf:
+        dircols = [col for col in hinf.keys() if col.startswith('dir')]
+        fvars.extend(dircols)
+    print('fvars after microSWIFTS',fvars)
 
     # and the rest
     if 'bp_ind' in binf: fvars.append('BP')
@@ -128,6 +137,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
     fvars.insert(3,'Hour')
     df = df[fvars]
     df.drop(columns='Date',inplace=True)
+    print(df.head())
 
     if bid in ['300234068519450','300534062895730','300534060251600','300534060051570']:
         #  2019-02,  2022-12, 2021-02, 2021-03
@@ -137,8 +147,11 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG'):
 
     # ###########  df.loc[df['SUB']>1] = np.nan ???
 
-    # reverse the order
-    df.to_csv('UPTEMPO/Processed_Data/'+bid+'.csv',index=False)
+    # we process SASSIE earlier than before declaring the buoys dead
+    if L2p:
+        df.to_csv('UPTEMPO/L1_SASSIE/'+bid+'.csv',index=False)
+    else:
+        df.to_csv('UPTEMPO/Processed_Data/'+bid+'.csv',index=False)
 
     #year,month,day,hour,lat,lon, OCEAN PRESSURES, ESTIMATED DEPTHS, TEMP DEPTHS, temps, Hull Temps, CTD-Temps, salis, Hull Salis, CTD-Salis, bp, ta, batt, sub
     # sto=[]
@@ -230,9 +243,13 @@ def processARGOS(bid):   # needs to be redone working with pd.read_csv()    for 
     #WebFormat(bid,fts=0)
 
 
-def processPG(bid):
+def processPG(bid,L2p=False):
 
-    rawpath='UPTEMPO/PG_LastDownload_'+bid+'.csv'
+    if L2p:
+        binf = BM.BuoyMaster(bid)
+        rawpath = f'UPTEMPO/L1_SASSIE/UpTempO_{bid}_09-01-2022-05-01-2023.csv'
+    else:
+        rawpath='UPTEMPO/PG_LastDownload_'+bid+'.csv'
     df = pd.read_csv(rawpath,parse_dates=['DeviceDateTime'])
     # drop columns that are never used
     dropcols = ['DataId','DeviceName']
@@ -309,7 +326,7 @@ def processPG(bid):
     print()
     print(binf)
     
-    processDATA(bid,df,hinf)  #fts=1 by default (Ts column is different from T1)
+    processDATA(bid,df,hinf,L2p=L2p)  #fts=1 by default (Ts column is different from T1)
                                        #fts=0 Ts coloum is same as T1
                                        #pmod=0.1 by default (value to multiply Ocean Pressure by)
     # # # LastUpdate bid.dat file now contains all the data (not just data since last update)
@@ -342,6 +359,121 @@ def processPG(bid):
 
     WebFormat(bid)
 
+def processMicroSWIFT(ID,bid):
+    
+    eng = matlab.engine.start_matlab()
+    eng.addpath('/Users/suzanne/git_repos/SWIFT-codes/GeneralTools')
+    
+    startswift = dt.datetime(2023,6,15) 
+    starttime = f'{startswift.year}-{startswift.month:02d}-{startswift.day:02d}T00:00:00'
+    endtime = ''    # leaving endtime blank, says get data up to present.
+
+    swiftPath = 'swift_telemetry'
+    # os.chdir(swiftPath)
+    print(ID,starttime,endtime)
+    # allbatterylevels, lasttime, lastlat, lastlon = eng.pullSWIFTtelemetry(ID,starttime,endtime,swiftPath)
+    what = eng.pullSWIFTtelemetry(ID,starttime,endtime) #,swiftPath)
+    # os.chdir('../')
+    
+    swiftFile=f'microSWIFT{ID}_telemetry.mat'
+    
+    swift_struct = sio.loadmat(f'{swiftPath}/{swiftFile}')
+    SWIFT = swift_struct['SWIFT']
+    
+
+    # time, lat, lon are all the same length.   
+    # CTdepth, salinity, watertemp, driftspd, driftdirT can be multiple depths at same time, position
+    time = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['time'])])])
+    print(time[:4],len(time),ID)
+    print('line 384 processMicroSWIFT')
+    print(np.argwhere(np.isnan(time)))
+    #  I AM NOT SURE WHY WE HAVE TO SUBTRACT 366 DAYS...
+    dates = [dt.datetime.combine(dt.datetime.fromordinal(int(t))-dt.timedelta(days=366),dt.datetime.min.time()) + dt.timedelta(days=t-int(t)) for t in time]  # + dt.timedelta(days=1) - dt.timedelta(days=366) 
+    lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
+    lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
+
+    # make a dictionary relating times to geophysical vars
+    timedepth = {}
+    for ii in range(lat.shape[0]):
+        timedepth[ii] = {'time':SWIFT[0,:]['time'][ii].ravel(),
+                         'CTdepth':SWIFT[0,:]['CTdepth'][ii].ravel(),
+                         'WaterTemp':SWIFT[0,:]['watertemp'][ii].ravel(),
+                         'Salinity':SWIFT[0,:]['salinity'][ii].ravel(),
+                         # 'DriftSpd':SWIFT[0,:]['driftspd'][ii].ravel(),
+                         # 'DriftDirT':SWIFT[0,:]['driftdirT'][ii].ravel()
+                         }
+
+    # find all unique depths
+    CTdepth = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['CTdepth'])])])
+    unique, counts = np.unique(CTdepth, return_counts=True)
+    ndepths = len(unique)
+    print('line 780',unique,ndepths)
+    # get column names for dataframe
+    columns = ['Date','Lat','Lon']
+    [columns.append(f'CTdepth-{ii}') for ii in range(ndepths)]
+    [columns.append(f'WaterTemp-{ii}') for ii in range(ndepths)]
+    [columns.append(f'Salinity-{ii}') for ii in range(ndepths)]
+    # [columns.append(f'DriftSpd-{ii}') for ii in range(ndepths)]
+    # [columns.append(f'DriftDirT-{ii}') for ii in range(ndepths)]
+    # create dataFrame
+    dfSwift = pd.DataFrame(columns=columns)
+
+    dfSwift['Date'] = dates 
+    dfSwift['Lat'] = lat
+    dfSwift['Lon'] = lon
+
+    for ii in range(ndepths):  # establish columns
+        dfSwift[f'CTdepth-{ii}'] = np.nan
+        dfSwift[f'WaterTemp-{ii}'] = np.nan
+        dfSwift[f'Salinity-{ii}'] = np.nan
+        # dfSwift[f'DriftSpd-{ii}'] = np.nan
+        # dfSwift[f'DriftDirT-{ii}'] = np.nan
+
+    for k,v in timedepth.items():
+
+        for ii in range(ndepths):
+            if ii==0:
+                # print(dfSwift[k,f'CTdepth-{ii}'])
+                dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+                # print(dfSwift[f'CTdepth-{ii}',0])
+                dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+                dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+                # dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
+                # dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
+            else:
+                try:
+                    dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+                except:
+                    pass
+                try:
+                    dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+                except:
+                    pass
+                try:
+                    dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+                except:
+                    pass
+                try:
+                    dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
+                except:
+                    pass
+                try:
+                    dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
+                except:
+                    pass
+    print(dfSwift.head())
+
+    # remove depth columns, they are only for header.
+    dfSwift.drop(columns=[item for item in dfSwift.columns if item.startswith('CTdepth-')],inplace=True)
+    print(dfSwift.columns)
+    hinf=HC.PG_HeaderCodes([col for col in dfSwift.columns[3:]])
+    mapper = {k:v for (k,v) in zip(dfSwift.columns[3:],hinf)}
+    dfSwift.rename(columns=mapper,inplace=True)
+    print(dfSwift.columns)
+    
+    processDATA(bid,dfSwift,hinf)  
+    
+    # WebFormat(f'microSWIFT-{bid}')
 
 
 def appendProcessed(bid,order=-1,fts=1):
@@ -389,7 +521,7 @@ def appendProcessed(bid,order=-1,fts=1):
 
 
 #======================================================================
-def WebFormat(bid,fts=1,order=-1,newdead=0):
+def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
 
     # get info and make proper header
     # wmo=BT.lookupWMO(bid)
@@ -398,8 +530,9 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     wmo = binf['wmo']
 
     sensor = {'PG':'Pacific Gyre',
-              'SBE': 'SeaBird Electronics',
-              'S9':'Soundnine'}
+              'SBE':'SeaBird Electronics',
+              'S9':'Soundnine',
+              'UW':'Univeristy of Washington'}
 
     # depDate="%.2d/%.2d/%d" % (int(depline[1]),int(depline[2]),int(depline[0]))
     fdeplat=binf['deploymentLat']
@@ -437,11 +570,15 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     # header=data[0]
     # data=data[1:]
     # nd=len(data)
-    df = pd.read_csv('UPTEMPO/Processed_Data/'+bid+'.csv')
+    if L2p:
+        df = pd.read_csv('UPTEMPO/L1_SASSIE/'+bid+'.csv')
+    else:
+        df = pd.read_csv('UPTEMPO/Processed_Data/'+bid+'.csv')
 
     # shead=header.split(' ')
 
-    fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel']+'-Last.dat'
+    fname='UpTempO_'+binf['name'][0]+'_'+binfn1+'_'+binf['vessel'].split(' ')[0]+'-Last.dat'
+
     lastUpdate = dt.datetime.now().strftime('%m/%d/%Y')
     dolt = f"{df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]}"
     # today=datetime.datetime.now()
@@ -535,7 +672,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
         scols, scolsMadeBy = zip(*sorted(zip(scols,scolsMadeBy)))
         scols = list(scols)
         scolsMadeBy = list(scolsMadeBy)
-
+        
     # shead=header.split(' ')[6:]  # only work on the data columns
     # print(shead)
     # print()
@@ -566,9 +703,9 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
             strdep,strcol=strDepColi(cdep,col)
             if tcolsMadeBy:
                 cdepMadeBy = tcolsMadeBy.pop(0)
-                lineout=f'% {strcol} = Temperature at nominal depth {strdep} (m), sensor made by {sensor[cdepMadeBy]}'
+                lineout=f'% {strcol} = Temperature (C) at nominal depth {strdep} (m), sensor made by {sensor[cdepMadeBy]}'
             else:
-                lineout=f'% {strcol} = Temperature at nominal depth {strdep} (m)'
+                lineout=f'% {strcol} = Temperature (C) at nominal depth {strdep} (m)'
 
             print(lineout)
             webhead.append(lineout)
@@ -592,13 +729,30 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
             strdep,strcol=strDepColi(cdep,col)
             if scolsMadeBy:
                 cdepMadeBy = scolsMadeBy.pop(0)
-                lineout=f'% {strcol} = Salinity at nominal depth {strdep} (m), sensor made by {sensor[cdepMadeBy]}'
+                lineout=f'% {strcol} = Salinity (psu) at nominal depth {strdep} (m), sensor made by {sensor[cdepMadeBy]}'
             else:
-                lineout=f'% {strcol} = Salinity at nominal depth {strdep} (m)'
+                lineout=f'% {strcol} = Salinity (psu) at nominal depth {strdep} (m)'
 
             print(lineout)
             webhead.append(lineout)
             col+=1
+            
+        # if h.startswith('spd'):
+        #     spdcols=binf['spddepths']
+        #     cdep=spdcols.pop(0)
+        #     strdep,strcol=strDepColi(cdep,col)
+        #     lineout=f'% {strcol} = Speed (m/s) at nominal depth {strdep} (m)'
+        #     print(lineout)
+        #     webhead.append(lineout)
+        #     col+=1
+        # if h.startswith('dir'):
+        #     spdcols=binf['dirdepths']
+        #     cdep=spdcols.pop(0)
+        #     strdep,strcol=strDepColi(cdep,col)
+        #     lineout=f'% {strcol} = Direction (from North) at nominal depth {strdep} (m)'
+        #     print(lineout)
+        #     webhead.append(lineout)
+        #     col+=1
         # if h.startswith('CTD-S'):
         #     cdep=CTDsdepths.pop(0)
         #     strdep,strcol=strDepColi(cdep,col)
@@ -695,22 +849,32 @@ def WebFormat(bid,fts=1,order=-1,newdead=0):
     # else:
     #     # depline=data[0].split(' ')
 
-
-    opw=open('UPTEMPO/WebData/'+fname,'w')
+    if L2p:
+        opw=open('UPTEMPO/L1_SASSIE/'+fname,'w')
+    else:
+        opw=open('UPTEMPO/WebData/'+fname,'w')
+        
     for w in webhead: opw.write(w+'\n')
     data = df.to_string(header=False, index=False)
     opw.write(data)
     opw.close()
 
     strtoday=dt.datetime.today().strftime('%Y%m%d')
-
+    today = dt.datetime.today()
+    
     if newdead: newfname=fname.replace('Last','FINAL')
     else: newfname=fname.replace('Last',strtoday)
-    os.system('cp UPTEMPO/WebData/'+fname+' UPTEMPO/WebData/'+newfname)
+    if L2p:
+        newfname = fname.replace('Last','20230501')
 
-    # lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
+    if L2p:
+        os.system('cp UPTEMPO/L1_SASSIE/'+fname+' UPTEMPO/L1_SASSIE/'+newfname)
+        return 'UPTEMPO/L1_SASSIE/'+newfname, lastUpdate
+    else:
+        os.system('cp UPTEMPO/WebData/'+fname+' UPTEMPO/WebData/'+newfname)
+        lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)
 
-    return 'UPTEMPO/WebData/'+newfname, lastUpdate
+        return 'UPTEMPO/WebData/'+newfname, lastUpdate
 
 
 

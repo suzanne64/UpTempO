@@ -32,7 +32,7 @@ hemisphere = NORTH
 icecolors=['dimgray','gray','darkgray','lightgray','aliceblue','powderblue']
 icelevels=[0.2,0.3,0.4,0.5,0.75]
 
-def getL1(filename, bid, figspath):
+def getL1(filename, bid, figspath=None):
     print('L1 file name:',filename)
     # baseheader ={'year':'Year',         # key from Level 1, value from ProcessedRaw and used here
     #              'month':'Month',
@@ -89,8 +89,9 @@ def getL1(filename, bid, figspath):
                 if 'Sea Level Pressure' in line:
                     columns.append('BP')
                 if 'Air Temperature' in line:
-                    if bid not in '300234060340370':  # Air Temp col is empty, can't get data from PG api
+                    if bid not in ['300234060340370','300234061160500']:  # 2014 11 empty, 2020 01 all same value
                         columns.append('Ta')
+
                 if 'Battery Voltage' in line:
                     columns.append('BATT')
                 if 'Submergence Percent' in line:
@@ -107,12 +108,14 @@ def getL1(filename, bid, figspath):
                 print(data.shape,'in else')
                 break
 
-    print(columns,len(columns))
-
+    print(columns,len(columns),ii)
     print(data.shape)
+
     if bid == '300234068719480':
-        data = data[:,:-1]   # 2019 03 has a column of all zeros with no heading name
-    
+        data = data[:,:-1]   # 2019 03 has a column of all zeros with no heading name        
+    if bid == '300234061160500':
+        data = np.delete(data,44,1)  # remove Air Temp 2020 01 because they are all the same value.
+        
     df = pd.DataFrame(data=data,columns=columns)
     print(df.columns)
     
@@ -164,10 +167,10 @@ def getL1(filename, bid, figspath):
 
     if df['Year'].iloc[0]>=2021:
         if bid not in ['300534062158480','300534062158460']:   # 2021-04, 2021-05 too late to get GPS and data in same download, but all 3s
-            df.loc[(df['GPSquality']<3),:] = np.nan
-            df.dropna(axis=0,how='all',inplace=True)
-            df.reset_index(inplace=True)
-
+            if 'GPSquality' in df.columns:  # microSWIFTs
+                df.loc[(df['GPSquality']<3),:] = np.nan
+                df.dropna(axis=0,how='all',inplace=True)
+                df.reset_index(inplace=True)
     # add dates column for plotting
     df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
     print('first date before:', df['Dates'].iloc[0])
@@ -282,8 +285,8 @@ def getL1(filename, bid, figspath):
         df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
         df.reset_index(drop=True,inplace=True)
         df.loc[(df['P1']< 8),'P1'] = np.nan
-        print(df['T0'].max())
-        print(df['T0'].min())
+        # print(df['T0'].max())
+        # print(df['T0'].min())
         maxValue = 36
         minValue = -5
         df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
@@ -323,8 +326,8 @@ def getL1(filename, bid, figspath):
             df.loc[(df['Dates']>=dt.datetime(2020,7,28,0,0,0)) & (df['Dates']<dt.datetime(2020,7,28,11,0,0)),'tcol'] = np.nan
         
     if '300234068514830' in bid:  # 2019 01
-        print(df['T0'].max())
-        print(df['T0'].min())
+        # print(df['T0'].max())
+        # print(df['T0'].min())
         maxValue = df['T0'].max()
         minValue = df['T0'].min()
         df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
@@ -343,9 +346,9 @@ def getL1(filename, bid, figspath):
         df.loc[(df['P1']>25) | (df['P1']<5),'P1'] = np.nan  
         df.loc[(df['Dates']>dt.datetime(2021,1,12)) & (df['Dates']<dt.datetime(2021,1,19,6,0,0)),'P1'] = np.nan
         # remove Ta if data are all the same value
-        ta = df['Ta'].to_numpy()
-        if (ta[0] == ta).all():
-            df.drop(columns=['Ta'],inplace=True)          
+        # ta = df['Ta'].to_numpy()
+        # if (ta[0] == ta).all():
+        #     df.drop(columns=['Ta'],inplace=True)          
         # remove Dest columns as they don't tell us much.
         df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
         # invalidate low, constant temps
@@ -371,8 +374,8 @@ def getL1(filename, bid, figspath):
     if '300534060251600' in bid:  # 2021 02
         # last loc looks bad, jumps too far in 1 hour even tho' GPSq=3
         df.loc[(df['Dates']>=dt.datetime(2021,12,23,17,0,0)),:] = np.nan
-        print(df['T0'].max())
-        print(df['T0'].min())
+        # print(df['T0'].max())
+        # print(df['T0'].min())
         df.loc[(df['T0']>20),'T0'] -= (df['T0'].max() - df['T0'].min())
         df['T0'].iloc[0] = np.nan
         df.loc[(df['P1']<7.5),'P1'] = np.nan
@@ -392,27 +395,30 @@ def getL1(filename, bid, figspath):
         df.loc[(df['S0']<25),'S0'] = np.nan      
 
     if '300534062898720' in bid: # 2022 01
-        df.loc[(df['Lon']>0) | (df['Lat']<70) | (df['Lat']>85),:] = np.nan
+        # remove thefirst three data points.
+        df = df.iloc[3:]
+        df=df.reset_index(drop=True)
         df.loc[(df['P1']>20),'P1'] = np.nan
         for scol in scols:
-            df.loc[(df[scol]<10) | (df[scol]>40),scol] = np.nan
+            df.loc[(df[scol]<20) | (df[scol]>40),scol] = np.nan
         for tcol in tcols:
             df.loc[(df[tcol]==0.0),tcol] = np.nan
             df.loc[(df[tcol]==-0.0001),tcol] = np.nan
-            
+            df.loc[(df[tcol]>4),tcol] = np.nan
+        df.loc[(df['P1']<1),'P1'] = np.nan
+        df.loc[(df['Dates']>=dt.datetime(2023,2,23)) & (df['Dates']<dt.datetime(2023,3,4)),:] = np.nan
+        
     if '300534062897730' in bid: # 2022 02        
-        print(df['T1'].max())
-        print(df['T1'].min())
-        maxValue = 99.9
-        minValue = -5
-        df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
+        df = df.iloc[3:]
+        # wrapped T1 temps
+        df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
         # invalidate salinities after max salinity
-        # imax = df['S0'].idxmax()
-        # df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<2.5),'S0'] = np.nan
+        imax = df['S0'].idxmax()
+        df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<1),'S0'] = np.nan
 
     if '300534063704980' in bid: # 2022 03 
-        pass  
+        df.loc[(df['Dates']>dt.datetime(2022,10,4)),'P5'] = np.nan
      
     if '300534063807110' in bid: # 2022 04  
         df.loc[(df['P1']>15),'P1'] = np.nan     
@@ -438,38 +444,46 @@ def getL1(filename, bid, figspath):
         df.loc[(df['S0']<20),'S0'] = np.nan
         
     if '300534062894700' in bid: # 2022 07
-        print(df['T1'].max())
-        print(df['T1'].min())
-        maxValue = 99.9
-        minValue = -5
-        df.loc[(df['T1']>20),'T1'] -= (maxValue - minValue)
+        # print(df['T1'].max())
+        # print(df['T1'].min())
+        df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
         # invalidate salinities after max salinity
-        # imax = df['S0'].idxmax()
-        # df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<0.5),'S0'] = np.nan
+        imax = df['S0'].idxmax()
+        df['S0'].iloc[imax+1:] = np.nan
+        df.loc[(df['S0']<1),'S0'] = np.nan
 
     if '300534062894740' in bid: # 2022 08
-        df.loc[(df['Lat']<70),:] = np.nan
         df.loc[(df['P1']>60),'P1'] = np.nan
         df.loc[(df['P1']<0),'P1'] = np.nan
         df.loc[(df['T1']<-10),'T1'] = np.nan
         df.loc[(df['T1']>30),'T1'] = np.nan
+        df.loc[(df['T0']>30),'T0'] = np.nan
         df.loc[(df['S0']<10),'S0'] = np.nan
 
     if '300534062896730' in bid: # 2022 09
         for pcol in pcols:
             df.loc[(df[pcol]<10),pcol] = np.nan
             df.loc[(df[pcol]>80),pcol] = np.nan
-        for tcol in tcols:
-           df.loc[(df[tcol]>10),tcol] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2023,4,1)) & (df['P3']<50),'P3'] = np.nan
+        # unwrap T1
+        df.loc[(df['T1']>40),'T1'] -= (df['T1'].max() - df['T1'].min())
+        for ii,tcol in enumerate(tcols):
+              df.loc[(df[tcol]>10),tcol] = np.nan
+              if ii>=2:
+                  df.loc[(df['Dates']>dt.datetime(2023,3,31)) & ((df[tcol]>-1) | (df[tcol]<-2)),tcol] = np.nan
         for scol in scols:
-            if 'S0' not in scol:
-                df.loc[(df[scol]<20),scol] = np.nan
-            else:
-                df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
+            df.loc[(df[scol]<20),scol] = np.nan
+            # invalidate salinities after max salinity
+            imax = df['S0'].idxmax()
+            df['S0'].iloc[imax+1:] = np.nan
+                # df.loc[(df['S0']<1),'S0'] = np.nan
+    #             df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
             df.loc[(df[scol]>40),scol] = np.nan
-        # imax = df['S0'].idxmax()
-        # df['S0'].iloc[imax+1:] = np.nan
+        # remove noisy data at end of time series (April 2023)
+        for scol in ['S1','S2','S3']:
+            df.loc[(df['Dates']>dt.datetime(2023,3,31)) & ((df[scol]<29.5) | (df[scol]>30.5)),scol] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2023,3,31)) & (df['S4']<30),'S4'] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2023,3,31)) & (df['S5']<32.8),'S5'] = np.nan
                 
     if '300534062894730' in bid: # 2022 10
         df.loc[(df['P1']>60),'P1'] = np.nan
@@ -482,7 +496,16 @@ def getL1(filename, bid, figspath):
         df.loc[(df['P1']>70),'P1'] = np.nan
         df.loc[(df['T1']>10),'T1'] = np.nan
     
-    
+    if '300534062895730' in bid: # 2022 12
+        # drop first two rows, data not settled
+        df.drop(index=df.index[:2],axis=0,inplace=True)
+        # print(df.loc[(df['GPSquality']<3),:])
+        # exit(-1)
+        # df.loc[(df['Lon']>-145) & (df['Lon']<-135),:] = np.NaN  # removes 1 point
+        # fig,ax = plt.subplots(1,1)
+        # ax.plot(df['Lon'],df['Lat'],'.')
+        # plt.show()
+        # exit(-1)
     # drop a column if all values are NaN
     if '300534060649670' not in bid:  # we want to keep 'T4' and 'S2' in 2019_05
         df.dropna(axis=1,how='all',inplace=True)
@@ -530,6 +553,10 @@ def getL1(filename, bid, figspath):
         df.loc[(df['SUB']<0.),'SUB'] = np.NaN
         df.loc[(df['SUB']>100.),'SUB'] = np.NaN   # WHY CAN'T I DO OR???   gdi
 
+    if bid in '300234067936870':  # 2019 W9 changed May 2023 to reflect pressure data beginning of time series. Not sure what is going on.
+        pdepths = [9.0]
+        tdepths = [-1, 3.3, 9.]
+        
     print('pdepths',pdepths)
     print('tdepths',tdepths)
     print('sdepths',sdepths)
@@ -547,8 +574,8 @@ def getL1(filename, bid, figspath):
             if col.startswith('P'):
                 ax.plot(df['Dates'],-1*df[col],'.')
             elif 'Lat' in col:
-                if bid in ['300234060340370','300234060236150','300234064737080','300234065419120','300234068514830','300534063807110','300534062896730']:  
-                    # 2014-11, 2014-13, 2017-04, 2017-05, 2019-01 2022-04 2022-09
+                if bid in ['300234060340370','300234060236150','300234064737080','300234065419120','300234068514830','300234067939910','300534063807110','300534062896730']:  
+                    # 2014-11, 2014-13, 2017-04, 2017-05, 2019-01 2020-JW2, 2022-04 2022-09
                     df.loc[(df['Lon'])<0,'Lon'] += 360
                 ax.plot(df['Lon'],df[col],'.')
                 ax.plot(df['Lon'].iloc[0],df[col].iloc[0],'go')
@@ -842,7 +869,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     # get ice map
     strdate = f'{int(byear)}{int(bmonth):02}{int(bday):02}'
     objdate = dt.datetime.strptime(strdate,'%Y%m%d')
-    if objdate < dt.datetime(2022,6,1):  # g02202(climate data record)
+    if objdate < dt.datetime(2023,1,1):  # g02202(climate data record)
         icefile = f'{int(byear)}/seaice_conc_daily_nh_{strdate}_f17_v04r00.nc'
         ncdata=nc.Dataset(f'{icepath}/{icefile}')
         ice=np.squeeze(ncdata['cdr_seaice_conc'])
@@ -1086,7 +1113,8 @@ def getOPbias(pcol,pdepth,df,bid,figspath):
     # else:
     dt0 = dt.datetime(np.int(df['Year'].iloc[0]),np.int(df['Month'].iloc[0]),np.int(df['Day'].iloc[0]))
     ax5.set_xlim([dt0,dt0+dt.timedelta(days=30)])
-    ax5.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    # ax5.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax5.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     try:
         ax5.set_title(f'First month of Ocean Pressure for buoy {bidf["name"][0]}-{int(bidf["name"][1]):02d}, at nominal depth of {pdepth:.1f}m.',wrap=True,fontsize=20)
     except:
