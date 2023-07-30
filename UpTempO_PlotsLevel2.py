@@ -18,7 +18,7 @@ import pandas as pd
 from scipy import stats
 from haversine import haversine
 
-def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdepths=None):
+def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdepths=None,dt1=None,dt2=None):
     print(f'plotting {quan} Time Series for {bid}')
 
     #quan = 'Temp' or 'Pressure'
@@ -68,6 +68,8 @@ def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdept
     ax.xaxis.set_major_locator(loc)
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_tick_params(rotation=85,labelsize=14)
+    if dt1:
+        ax.set_xlim([dt1,dt2])
 
     if quan == 'Temp':
         tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Tilt')]
@@ -132,7 +134,7 @@ def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdept
         for t in tr: opw.write(t+'\n')
         opw.close()
 
-def VelocitySeries(bid,path,df=None):
+def VelocitySeries(bid,path,df=None,dt1=None,dt2=None):
 
     binf=BM.BuoyMaster(bid)
     deplat = binf['deploymentLat']
@@ -190,6 +192,8 @@ def VelocitySeries(bid,path,df=None):
     ax.xaxis.set_major_locator(loc)
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_tick_params(rotation=85,labelsize=14)
+    if dt1:
+        ax.set_xlim([dt1,dt2])
     ax.set_ylim(0,2)
     ax.plot(df['DateBTN'],df['velocity'],'-ok',ms=3)
 
@@ -205,6 +209,7 @@ def VelocitySeries(bid,path,df=None):
     ax.set_ylabel('Velocity (m/s)')
     plt.subplots_adjust(bottom=0.15)
     plt.grid(True)
+
     plt.savefig(f'{path}/VelocitySeries{abbv}.png')
 
     plt.show()
@@ -222,7 +227,7 @@ def VelocitySeries(bid,path,df=None):
         opw.close()
 
 
-def Batt_Sub(bid,path,df=None):
+def Batt_Sub(bid,path,df=None,dt1=None,dt2=None):
     print(f'plotting Battery Voltage and Submergence for {bid}')
     binf=BM.BuoyMaster(bid)
     deplat = binf['deploymentLat']
@@ -247,6 +252,8 @@ def Batt_Sub(bid,path,df=None):
     ax1.xaxis.set_major_locator(loc)
     ax1.xaxis.set_major_formatter(formatter)
     ax1.xaxis.set_tick_params(rotation=85,labelsize=14)
+    if dt1:
+        ax1.set_xlim([dt1,dt2])
 
     if 'SUB' in df.columns:
         if (df['SUB']>1).any():
@@ -276,6 +283,7 @@ def Batt_Sub(bid,path,df=None):
         if 'SUB' not in df.columns:
             datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
             plt.title(buoylab+' ('+bid+') '+'Battery Voltage:'+datelab,fontsize=20)
+
     if 'SUB' in df.columns and 'BATT' in df.columns:
         datelab=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])} to {int(df['Month'].iloc[-1]):02}/{int(df['Day'].iloc[-1]):02}/{int(df['Year'].iloc[-1])}"
         plt.title(buoylab+' ('+bid+') '+'Submergence Percent and Battery Voltage:'+datelab,fontsize=20)
@@ -345,6 +353,18 @@ def TrackMaps(bid,path,df=None):
     print(abbv)
     plt.savefig(f'{path}/TrackByMonth'+abbv+'.png',bbox_inches='tight')
     plt.show()
+
+    opr=open('UPTEMPO/transferRecord.dat','r')
+    tr=opr.read()
+    opr.close()
+    tr=tr.split('\n')
+
+    outwrite='UPTEMPO/WebPlots/TrackByMonth'+abbv+'.png WebPlots/TrackByMonth'+abbv+'.png'
+    if outwrite not in tr:
+        tr.append(outwrite)
+        opw=open('UPTEMPO/transferRecord.dat','w')
+        for t in tr: opw.write(t+'\n')
+        opw.close()
 
 def TrackMaps2Atlantic(bid,path):
 

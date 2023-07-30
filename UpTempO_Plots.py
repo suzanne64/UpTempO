@@ -144,40 +144,6 @@ def TimeSeriesPlots(bid,quan='Temp'):
         plot = (df['Date']>=depdate)
         for t,pcol in enumerate(pcols):
             ax.plot(df['Date'][plot],df[pcol][plot],'-o',color=cols[t],ms=1)
-        # if 'pdepths' in binf:
-        #     depths=binf['pdepths']
-        #     ind1=header.index('P1')
-        # else:
-        #     if 'ddepths' in binf:
-        #         depths=binf['ddepths']
-        #         ind1=header.index('D2')
-        #     else:
-        #         havepressures=0
-
-    #     if 'BP' in df.columns:
-    #         islp=header.index('BP')
-    #     else:
-    #         havebp=0
-    #
-    #     # if havepressures:
-    #     #     yaxlab='Ocean Pressure (dB)'
-    #     #     maxdep=np.max(depths)
-    #     #     ax.set_ylim(maxdep+10.,0)
-    #
-    # if havepressures:
-    #     nt=len(depths)
-    #     if quan=='Pressure':
-    #         vals=data[:,ind1:ind1+nt]
-    #     else:
-    #         vals=data[:,ind1]
-    #
-    #     if quan == 'Pressure':
-    #         # secax.set_ticks()
-    #
-    #     for t in range(nt):
-    #         cvals=vals[:,t]
-    #         ax.plot_date(dateobjs,cvals,'-o',color=cols[t],ms=1)
-    #
 
     # datelab=" %.2d/%.2d/%d to %.2d/%.2d/%d" % (dateobjs[0].month,dateobjs[0].day,dateobjs[0].year,dateobjs[-1].month,dateobjs[-1].day,dateobjs[-1].year)
     datelab=f"{df['Month'].iloc[0]:02}/{df['Day'].iloc[0]:02}/{df['Year'].iloc[0]} to {df['Month'].iloc[-1]:02}/{df['Day'].iloc[-1]:02}/{df['Year'].iloc[-1]}"
@@ -192,9 +158,13 @@ def TimeSeriesPlots(bid,quan='Temp'):
     tr=opr.read()
     opr.close()
     tr=tr.split('\n')
+    print(tr)
+    exit(-1)
 
     outwrite='UPTEMPO/WebPlots/'+quan+'Series'+abbv+'.png WebPlots/'+quan+'Series'+abbv+'.png'
     if outwrite not in tr:
+        print('line 198 in UpTempO_plots.py',outwrite)
+        exit(-1)
         tr.append(outwrite)
         opw=open('UPTEMPO/transferRecord.dat','w')
         for t in tr: opw.write(t+'\n')
@@ -455,6 +425,7 @@ def TrackMaps(bid):
     for m in range(12):
         cm=m+1
         cdat=df['Month'] == cm  #data[data[:,imo] == cm,:]
+        print(df.loc[(df['Lon']>-145) & (df['Lon']<-135),:])
         xar,yar=PF.LLtoXY(df['Lat'][cdat],df['Lon'][cdat],0.0)
         plt.plot(xar,yar,'o',ms=1.5,color='k')
         plt.plot(xar,yar,'o',ms=1,color=ucols[m])
@@ -645,7 +616,8 @@ def PrevOverviewMap(strdate=None):
     print('buoys date',buoysdate)
 
     ax = aplots.UpTempOArcticMap(strdate)
-    shapes = {2019:'o', 2020:'s',2021:'d',2022:'.'}
+    # shapes = {2019:'o', 2020:'s',2021:'d',2022:'.'}
+    shapes = {2022:'o',2023:'d'}
     print('line 649 in plots')
     # newline = '\n'
     # get last locations of each buoy we are currently following on buoysdate
@@ -668,8 +640,7 @@ def PrevOverviewMap(strdate=None):
         #     clat = df['Lat'].iloc[-1]
         #     # blab=f"{binf['name'][0]}-{binf['name'][1]}{newline}{df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
         #     blab=f"{binf['name'][0]}-{binf['name'][1]} {df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
-
-            ax.plot(clon,clat,marker=shapes[df['Year'].iloc[0]],color='k',ms=10,
+            ax.plot(clon,clat,marker=shapes[df['Year'].iloc[0]],color='k',ms=5, #ms=10,
                     transform=ccrs.PlateCarree())
             ax.text(clon-(2*np.cos(clat)*np.pi/180),clat-0.5,blab,fontsize=12, color='k', fontweight='bold',transform=ccrs.PlateCarree())
 
@@ -681,6 +652,9 @@ def PrevOverviewMap(strdate=None):
     plt.savefig('UPTEMPO/WebPlots/PositionsMap.'+strdate+'.png',bbox_inches='tight')
 
     outwrite='UPTEMPO/WebPlots/PositionsMap.'+strdate+'.png PositionMaps/PositionsMap.'+strdate+'.png'
+    print(outwrite)
+    transferList(outwrite)
+    outwrite='UPTEMPO/WebPlots/CurrentPositionsMap.png WebPlots/CurrentPositionsMap.png'
     print(outwrite)
     transferList(outwrite)
 

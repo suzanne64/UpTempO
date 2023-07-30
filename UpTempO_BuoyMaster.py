@@ -85,7 +85,8 @@ def BuoyMaster(bid):
                         'brand':'University of Washington',
                         'pgname':'microSWIFT-007',
                         'tdepths':[0.5],         
-                        'sdepths':[0.5]},
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
 
         '300434064042420':{'notes':'UpTempO 2023 #2', # Jim Thomson's microSWIFT, salinity ball type
                         'name':['2023','2'],           #  
@@ -98,7 +99,8 @@ def BuoyMaster(bid):
                         'brand':'University of Washington',
                         'pgname':'microSWIFT-021',
                         'tdepths':[0.5],         
-                        'sdepths':[0.5]},
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
 
         '300434064046720':{'notes':'UpTempO 2023 #3', # Jim Thomson's microSWIFT, salinity ball type
                         'name':['2023','3'],           #  
@@ -111,7 +113,8 @@ def BuoyMaster(bid):
                         'brand':'University of Washington',
                         'pgname':'microSWIFT-008',
                         'tdepths':[0.5],         
-                        'sdepths':[0.5]},
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
 
         '300434064042710':{'notes':'UpTempO 2023 #4', # Jim Thomson's microSWIFT, salinity ball type
                         'name':['2023','4'],           #  
@@ -124,8 +127,68 @@ def BuoyMaster(bid):
                         'brand':'University of Washington',
                         'pgname':'microSWIFT-012',
                         'tdepths':[0.5],         
-                        'sdepths':[0.5]},
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
 
+        '300534062891690':{'notes':'UpTempO 2023 #5', # Salinity Ball
+                           'name':['2023','5'],           #  
+                           'imeiabbv':'891690',
+                           'wmo':'4802674',
+                           'deploymentDate':'07/29/2023',
+                           'deploymentLon':'',
+                           'deploymentLat':'',
+                           'vessel':'Healy',
+                           'brand':'Pacific Gyre',
+                           'pgname':'UW-IB-SVPS-0005',
+                           'tdepths':[0.14],
+                           'tdepthsMadeBy':['PG'],
+                           'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
+                           'HULLtdepthsMadeBy':['S9'],
+                           'HULLsdepths':[0.38],          # hull
+                           'HULLsdepthsMadeBy':['S9'],
+                           'vbatt_ind':1,
+                           'sub_ind':1,
+                           'gps_ind':1},
+
+        '300534062893740':{'notes':'UpTempO 2023 #6', # Salinity Ball
+                           'name':['2023','6'],           #  
+                           'imeiabbv':'893740',
+                           'wmo':'4802675',
+                           'deploymentDate':'07/29/2023',
+                           'deploymentLon':'',
+                           'deploymentLat':'',
+                           'vessel':'Healy',
+                           'brand':'Pacific Gyre',
+                           'pgname':'UW-IB-SVPS-0006',
+                           'tdepths':[0.14],
+                           'tdepthsMadeBy':['PG'],
+                           'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
+                           'HULLtdepthsMadeBy':['S9'],
+                           'HULLsdepths':[0.38],          # hull
+                           'HULLsdepthsMadeBy':['S9'],
+                           'vbatt_ind':1,
+                           'sub_ind':1,
+                           'gps_ind':1},
+
+        '300534062895700':{'notes':'UpTempO 2023 #7', # Salinity Ball
+                           'name':['2023','7'],           #  
+                           'imeiabbv':'895700',
+                           'wmo':'4802676',
+                           'deploymentDate':'07/29/2023',
+                           'deploymentLon':'',
+                           'deploymentLat':'',
+                           'vessel':'Healy',
+                           'brand':'Pacific Gyre',
+                           'pgname':'UW-IB-SVPS-0007',
+                           'tdepths':[0.14],
+                           'tdepthsMadeBy':['PG'],
+                           'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
+                           'HULLtdepthsMadeBy':['S9'],
+                           'HULLsdepths':[0.38],          # hull
+                           'HULLsdepthsMadeBy':['S9'],
+                           'vbatt_ind':1,
+                           'sub_ind':1,
+                           'gps_ind':1},
         # '300434064606280':{'notes':'UpTempO 2023 #4', # Jim Thomson's microSWIFT, salinity ball type
         #                 'name':['2023','4'],           #  
         #                 'imeiabbv':'606280',
@@ -156,65 +219,6 @@ def BuoyMaster(bid):
         #                 'spddepths':[0.5],
         #                 'dirdepths':[0.5]},
 # deploy July - August
-       # '300534062891690':{'notes':'UpTempO 2023 #8', # Salinity Ball
-       #                    'name':['2023','8'],           #  
-       #                    'imeiabbv':'891690',
-       #                    'wmo':'4802674',
-       #                    'deploymentDate':'07/15/2023',
-       #                    'deploymentLon':'',
-       #                    'deploymentLat':'',
-       #                    'vessel':'Healy',
-       #                    'brand':'Pacific Gyre',
-       #                    'pgname':'UW-IB-SVPS-0005',
-       #                    'tdepths':[0.14],
-       #                    'tdepthsMadeBy':['PG'],
-       #                    'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
-       #                    'HULLtdepthsMadeBy':['S9'],
-       #                    'HULLsdepths':[0.38],          # hull
-       #                    'HULLsdepthsMadeBy':['S9'],
-       #                    'vbatt_ind':1,
-       #                    'sub_ind':1,
-       #                    'gps_ind':1},
-
-       # '300534062893740':{'notes':'UpTempO 2023 #9', # Salinity Ball
-       #                    'name':['2023','9'],           #  
-       #                    'imeiabbv':'893740',
-       #                    'wmo':'4802675',
-       #                    'deploymentDate':'07/15/2023',
-       #                    'deploymentLon':'',
-       #                    'deploymentLat':'',
-       #                    'vessel':'Healy',
-       #                    'brand':'Pacific Gyre',
-       #                    'pgname':'UW-IB-SVPS-0006',
-       #                    'tdepths':[0.14],
-       #                    'tdepthsMadeBy':['PG'],
-       #                    'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
-       #                    'HULLtdepthsMadeBy':['S9'],
-       #                    'HULLsdepths':[0.38],          # hull
-       #                    'HULLsdepthsMadeBy':['S9'],
-       #                    'vbatt_ind':1,
-       #                    'sub_ind':1,
-       #                    'gps_ind':1},
-
-       # '300534062895700':{'notes':'UpTempO 2023 #10', # Salinity Ball
-       #                    'name':['2023','10'],           #  
-       #                    'imeiabbv':'895700',
-       #                    'wmo':'4802676',
-       #                    'deploymentDate':'07/15/2023',
-       #                    'deploymentLon':'',
-       #                    'deploymentLat':'',
-       #                    'vessel':'Healy',
-       #                    'brand':'Pacific Gyre',
-       #                    'pgname':'UW-IB-SVPS-0007',
-       #                    'tdepths':[0.14],
-       #                    'tdepthsMadeBy':['PG'],
-       #                    'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
-       #                    'HULLtdepthsMadeBy':['S9'],
-       #                    'HULLsdepths':[0.38],          # hull
-       #                    'HULLsdepthsMadeBy':['S9'],
-       #                    'vbatt_ind':1,
-       #                    'sub_ind':1,
-       #                    'gps_ind':1},
 
 # deploy August 16
         # '300534062897690':{'notes':'UpTempO 2023 #11', # 60M One Wire 2022 Mike Steele #17.pdf

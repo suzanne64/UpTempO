@@ -41,7 +41,7 @@ def getL1(filename, bid, figspath=None):
     #              'Latitude':'Lat',
     #              'Longitude':'Lon'}
     columns = ['Year','Month','Day','Hour','Lat','Lon']
-    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','gold','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
     pdepths = []
     tdepths = []
@@ -199,6 +199,17 @@ def getL1(filename, bid, figspath=None):
     tiltcols = [col for col in df.columns if col.startswith('Tilt')]
     print(tcols)
     
+    # #establish culledStats data frame
+    # dfCulledStats = pd.DataFrame(columns=['BuoyName','BadLocation'])
+    # binf = BM.BuoyMaster(bid)
+    # try:
+    #     cull = [f'{binf["name"][0]}_{int(binf["name"][1]):02d}', 0]
+    # except:
+    #     cull = f'{binf["name"][0]}_{binf["name"][1]}'
+    # print(f'{binf["name"][0]}_{int(binf["name"][1]):02d}')
+    # print()
+    # print(dfCulledStats.head())   
+    # exit(-1)
     # invalidate locs if they are obviously erroneous
     if '300234065419120' in bid:  # 2017 05
         df.loc[(df['Lat']< 72.5) & (df['Lon']>-153) & (df['Lon']<-152.5),['Lat','Lon']] = np.NaN  # removes 1 point
@@ -358,12 +369,28 @@ def getL1(filename, bid, figspath=None):
     if '300534060649670' in bid:  # 2021 01
         # since these data were re-downloaded to get GPSquality, we cull data after 'deceased' date
         df.loc[(df['Dates']>dt.datetime(2022,2,27)),:] = np.nan
+        
+        # print(df.head())
+        # dfCulledStats['BadLocation'] = len(df.loc[(df['GPSquality']<3),'Lat'])
+        # print(dfCulledStats.head())
         df.loc[(df['GPSquality']<3),:] = np.nan
         
+        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==12) & (df['Lat']<60),'Lat'])
+        # print(dfCulledStats.head())
         df.loc[(df['Month']==12) & (df['Lat']<60),:] = np.nan
+        
+        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==9) & (df['Lat']>73.1),'Lat'])
+        # print(dfCulledStats.head())
         df.loc[(df['Month']==9) & (df['Lat']>73.1),:] = np.nan
+        
+        # dfCulledStats['BadLocation'] += len(df.loc[( (df['Month']==12) | (df['Month']==1) ) & (df['Lat']<69.2),'Lat'])
+        # print(dfCulledStats.head())
         df.loc[( (df['Month']==12) | (df['Month']==1) ) & (df['Lat']<69.2),:] = np.nan
+        
+        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==1) & (df['Lat']>69.81),'Lat'])
+        # print(dfCulledStats.head())
         df.loc[(df['Month']==1) & (df['Lat']>69.81),:] = np.nan
+        # exit(-1)
         
         df.loc[(df['Dates']>dt.datetime(2021,8,31)),'P2'] = np.nan
         df['T0'].iloc[0] = np.nan
@@ -395,10 +422,12 @@ def getL1(filename, bid, figspath=None):
         df.loc[(df['S0']<25),'S0'] = np.nan      
 
     if '300534062898720' in bid: # 2022 01
-        # remove thefirst three data points.
-        df = df.iloc[3:]
+        # don't include data before buoy goes in water
+        df = df.loc[(df['Dates']>=dt.datetime(2022,9,9,4,0,0)),:] 
         df=df.reset_index(drop=True)
         df.loc[(df['P1']>20),'P1'] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2022,10,20)) & (df['T0']<-2),'T0'] = np.nan
+        # df.loc[(df['Dates']>dt.datetime(2022,10,22,11,0,0)) & (df['Dates']<dt.datetime(2022,10,26)),scols] = np.nan
         for scol in scols:
             df.loc[(df[scol]<20) | (df[scol]>40),scol] = np.nan
         for tcol in tcols:
@@ -406,21 +435,30 @@ def getL1(filename, bid, figspath=None):
             df.loc[(df[tcol]==-0.0001),tcol] = np.nan
             df.loc[(df[tcol]>4),tcol] = np.nan
         df.loc[(df['P1']<1),'P1'] = np.nan
+        # bad, disjointed data
         df.loc[(df['Dates']>=dt.datetime(2023,2,23)) & (df['Dates']<dt.datetime(2023,3,4)),:] = np.nan
         
     if '300534062897730' in bid: # 2022 02        
-        df = df.iloc[3:]
+        # don't include data before buoy goes in water
+        df = df.loc[(df['Dates']>dt.datetime(2022,9,9,16,0,0)),:] 
+        df=df.reset_index(drop=True)
         # wrapped T1 temps
         df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
-        # invalidate salinities after max salinity
-        imax = df['S0'].idxmax()
-        df['S0'].iloc[imax+1:] = np.nan
+        # invalidate salinities after max salinity, NOT YET
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
         df.loc[(df['S0']<1),'S0'] = np.nan
 
     if '300534063704980' in bid: # 2022 03 
         df.loc[(df['Dates']>dt.datetime(2022,10,4)),'P5'] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2022,10,18,15,0,0)) & (df['Dates']<dt.datetime(2022,10,22)),'P1'] = np.nan
+        df.loc[(df['P1']>12),'P1'] = np.nan
+        df.loc[(df['T0']==-0.01),'T0'] = np.nan
      
     if '300534063807110' in bid: # 2022 04  
+        # don't include data before buoy goes in water
+        df = df.loc[(df['Dates']>=dt.datetime(2022,9,11,17,50,0)),:] 
+        df=df.reset_index(drop=True)
         df.loc[(df['P1']>15),'P1'] = np.nan     
         for tcol in tcols:
             df.loc[(df[tcol]==0.0),tcol] = np.nan
@@ -428,8 +466,13 @@ def getL1(filename, bid, figspath=None):
         for scol in scols:
             df.loc[(df[scol]>150),scol] = np.nan
             df.loc[(df[scol]<12),scol] = np.nan
+        # invalidate salinities after max salinity, NOT YET
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
  
     if '300534063803100' in bid: # 2022 05
+        df = df.loc[(df['Dates']>dt.datetime(2022,9,13,18,30,0)),:]
+        df=df.reset_index(drop=True)
         for pcol in pcols:
             df.loc[(df[pcol]<2),pcol] = np.nan
             df.loc[(df[pcol]>70),pcol] = np.nan
@@ -440,61 +483,130 @@ def getL1(filename, bid, figspath=None):
            df.loc[(df[scol]<20),scol] = np.nan
     
     if '300534062892700' in bid: # 2022 06
+        df = df.loc[(df['Dates']>dt.datetime(2022,9,15,22,30,0)),:]
+        df=df.reset_index(drop=True)
+        df.loc[(df['T0']<-1.9),'T0'] = np.nan
         df.loc[(df['T1']==0),'T1'] = np.nan
         df.loc[(df['S0']<20),'S0'] = np.nan
         
     if '300534062894700' in bid: # 2022 07
-        # print(df['T1'].max())
-        # print(df['T1'].min())
+        df = df.loc[(df['Dates']>dt.datetime(2022,9,17,17,0,0)),:]
+        df=df.reset_index(drop=True)
+        # correct wrapped temps
         df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
-        # invalidate salinities after max salinity
-        imax = df['S0'].idxmax()
-        df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<1),'S0'] = np.nan
+        
+        # invalidate salinities after max salinity, NOT YET
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
+        # df.loc[(df['S0']<1),'S0'] = np.nan  why do we have this?
 
     if '300534062894740' in bid: # 2022 08
+        df = df.loc[(df['Dates']>dt.datetime(2022,9,20,2,10,0)),:]
+        df=df.reset_index(drop=True)
+        df.loc[(df['Lon']>-153) & (df['Lon']<-152.8) & (df['Lat']<72.6),:] = np.nan
+        df.loc[(df['Lon']>-154.5) & (df['Lon']<-154.4) & (df['Lat']>73.9),:] = np.nan
+        df.loc[(df['Lon']>-153.7) & (df['Lon']<-153.6) & (df['Lat']>73.9),:] = np.nan
         df.loc[(df['P1']>60),'P1'] = np.nan
         df.loc[(df['P1']<0),'P1'] = np.nan
-        df.loc[(df['T1']<-10),'T1'] = np.nan
-        df.loc[(df['T1']>30),'T1'] = np.nan
         df.loc[(df['T0']>30),'T0'] = np.nan
+        df.loc[(df['T1']>30),'T1'] = np.nan
         df.loc[(df['S0']<10),'S0'] = np.nan
+        # invalidate salinities after max salinity, NOT YET
+        # imax = df['S0'].idxmax()
+        # df['S0'].iloc[imax+1:] = np.nan
 
     if '300534062896730' in bid: # 2022 09
+        df = df.loc[(df['Dates']>=dt.datetime(2022,9,20,7,0,0)),:]
+        df=df.reset_index(drop=True)
         for pcol in pcols:
             df.loc[(df[pcol]<10),pcol] = np.nan
             df.loc[(df[pcol]>80),pcol] = np.nan
+        # 'removePspikes' does not take care of these (later on), so I'm doing it here.
         df.loc[(df['Dates']>dt.datetime(2023,4,1)) & (df['P3']<50),'P3'] = np.nan
         # unwrap T1
         df.loc[(df['T1']>40),'T1'] -= (df['T1'].max() - df['T1'].min())
         for ii,tcol in enumerate(tcols):
               df.loc[(df[tcol]>10),tcol] = np.nan
-              if ii>=2:
-                  df.loc[(df['Dates']>dt.datetime(2023,3,31)) & ((df[tcol]>-1) | (df[tcol]<-2)),tcol] = np.nan
-        for scol in scols:
-            df.loc[(df[scol]<20),scol] = np.nan
-            # invalidate salinities after max salinity
-            imax = df['S0'].idxmax()
-            df['S0'].iloc[imax+1:] = np.nan
-                # df.loc[(df['S0']<1),'S0'] = np.nan
-    #             df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
-            df.loc[(df[scol]>40),scol] = np.nan
-        # remove noisy data at end of time series (April 2023)
-        for scol in ['S1','S2','S3']:
-            df.loc[(df['Dates']>dt.datetime(2023,3,31)) & ((df[scol]<29.5) | (df[scol]>30.5)),scol] = np.nan
-        df.loc[(df['Dates']>dt.datetime(2023,3,31)) & (df['S4']<30),'S4'] = np.nan
-        df.loc[(df['Dates']>dt.datetime(2023,3,31)) & (df['S5']<32.8),'S5'] = np.nan
+              if ii<2:
+                  df.loc[(df[tcol]==-0.01) | (df[tcol]==0.0000),tcol] = np.nan
+        # hand editing, removeTspikes doesn't take them all out.
+        df.loc[(df['T5']>-1) & (df['Dates']>dt.datetime(2022,10,22)) & (df['Dates']<dt.datetime(2022,12,1)),'T5'] = np.nan
+        df.loc[(df['T7']>1.5) & (df['Dates']>dt.datetime(2022,10,22)) & (df['Dates']<dt.datetime(2022,12,1)),'T7'] = np.nan
+        df.loc[(df['T7']>-1) & (df['Dates']>dt.datetime(2022,11,7)),'T7'] = np.nan
+        df.loc[(df['T9']<-2),'T9'] = np.nan
+        df.loc[(df['T9']>1) & (df['Dates']>dt.datetime(2022,11,5)),'T9'] = np.nan
+        df.loc[(df['T13']<-2),'T13'] = np.nan
+        df.loc[(df['T13']>1) & (df['Dates']>dt.datetime(2022,11,1)),'T13'] = np.nan
+        for ii,scol in enumerate(scols):
+            if ii>0:
+                df.loc[(df[scol]<20),scol] = np.nan
+                df.loc[(df[scol]>40),scol] = np.nan
+        # hand editing, there is no removeSspikes
+        df.loc[(df['S0']<1),'S0'] = np.nan
+        df.loc[(df['S1']<28) & (df['Dates']>dt.datetime(2022,10,26)),'S1'] = np.nan
+        df.loc[(df['S1']<29) & (df['Dates']>dt.datetime(2022,11,2,15,0,0)),'S1'] = np.nan
+        df.loc[(df['S1']<29.7) & (df['Dates']>dt.datetime(2022,11,24)),'S1'] = np.nan
+        df.loc[(df['S2']<26),'S2'] = np.nan
+        df.loc[(df['S2']<26.6) & (df['Dates']>dt.datetime(2022,10,5)),'S2'] = np.nan
+        df.loc[(df['S2']<27.7) & (df['Dates']>dt.datetime(2022,10,24,5,0,0)),'S2'] = np.nan
+        df.loc[(df['S2']<29) & (df['Dates']>dt.datetime(2022,11,3,5,0,0)),'S2'] = np.nan
+        df.loc[(df['S2']<29.5) & (df['Dates']>dt.datetime(2022,11,21)),'S2'] = np.nan
+        df.loc[(df['S3']<29) & (df['Dates']>dt.datetime(2022,11,1)),'S3'] = np.nan
+        df.loc[(df['S3']<29.5) & (df['Dates']>dt.datetime(2022,11,13)),'S3'] = np.nan
+        df.loc[(df['S4']<28),'S4'] = np.nan
+        df.loc[(df['S5']<29.4),'S5'] = np.nan
+        df.loc[(df['S5']<31.4) & (df['Dates']>dt.datetime(2022,10,30)) & (df['Dates']<dt.datetime(2022,12,1)),'S5'] = np.nan
+        
+    #         # invalidate salinities after max salinity
+    #         imax = df['S0'].idxmax()
+    #         df['S0'].iloc[imax+1:] = np.nan
+    #             # df.loc[(df['S0']<1),'S0'] = np.nan
+    # #             df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
+        # intersection of T, S depths
+        tsINTdepths = [de for de in sdepths if de in tdepths]
+        # indices of intersection
+        indS = [i for i,j in enumerate(sdepths) if j in tsINTdepths]
+        indT = [i for i,j in enumerate(tdepths) if j in tsINTdepths]
+        for ii, (inds,indt) in enumerate(zip(indS,indT)): 
+            print(ii,inds,indt)
+            if ii<4:
+                df.loc[((df[tcols[indt]]<-3) | (df[tcols[indt]]>-1.642)) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[tcols[indt],scols[inds]]] = np.nan
+                df.loc[(df[scols[inds]]<26) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[scols[inds]]] = np.nan  # tcols[indt],
+            else:
+                df.loc[((df[tcols[indt]]<-1.5) | (df[tcols[indt]]>-1.24)) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[tcols[indt],scols[inds]]] = np.nan
+                df.loc[(df[scols[inds]]<33) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[scols[inds]]] = np.nan  #tcols[indt],
+                
+        # df = removeSspikes(bid,df,sdepths,figspath)
+
+        # fig78,ax78 = plt.subplots(len(tsINTdepths),1,figsize=(10,10),sharex=True)
+        # for ii, (inds,indt) in enumerate(zip(indS,indT)): 
+        #     ax78[ii].plot(df['Dates'],df[tcols[indt]],'.',ms=3)
+        #     secax=ax78[ii].twinx()
+        #     secax.plot(df['Dates'],df[scols[inds]],'r.',ms=3)
+        #     ax78[ii].set_title(f'{tcols[indt]} (b) and {scols[inds]} (r) at {sdepths[inds]}m')
+        # plt.savefig(f'{figspath}/TandS_SBEcorr.png')
+        # plt.show()
+        # exit(-1)
                 
     if '300534062894730' in bid: # 2022 10
-        df.loc[(df['P1']>60),'P1'] = np.nan
-        df.loc[(df['P1']<0),'P1'] = np.nan
-        df.loc[(df['T1']>10),'T1'] = np.nan
+        df = df.loc[(df['Dates']>=dt.datetime(2022,9,25,17,10,0)),:]
+        df=df.reset_index(drop=True)
+        df.loc[(df['P1']>60) | (df['P1']<0),'P1'] = np.nan
         df.loc[(df['T1']<-10),'T1'] = np.nan
+        df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
+        df.loc[(df['T0']==-0.01),'T0'] = np.nan
+        df.loc[(df['Dates']>dt.datetime(2022,10,27,4,0,0)),'T1'] = np.nan
         df.loc[(df['S0']<10),'S0'] = np.nan
+        # remove whacky locations, even tho' GPSQuality = 3
+        df.loc[( (df['Lon'].diff().abs()>0.005) | (df['Lat'].diff().abs()>0.002) ) & (df['Dates']<dt.datetime(2022,10,2)),:] = np.nan
+        df.loc[(df['Lon']>-150.421) & (df['Lon']<-150.420) & (df['Lat']>73.00) & (df['Lat']<73.02),:] = np.nan
         
     if '300534062893700' in bid: # 2022 11
-        df.loc[(df['P1']>70),'P1'] = np.nan
-        df.loc[(df['T1']>10),'T1'] = np.nan
+        # remove rows before buoy in water, according to P and S values
+        df = df.loc[(df['Dates']>=dt.datetime(2022,9,25,20,30,0)),:]
+        df=df.reset_index(drop=True)
+        # T0 has some unexplainable offset (to warmer temps)
+        df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'] = np.nan 
     
     if '300534062895730' in bid: # 2022 12
         # drop first two rows, data not settled
@@ -509,6 +621,7 @@ def getL1(filename, bid, figspath=None):
     # drop a column if all values are NaN
     if '300534060649670' not in bid:  # we want to keep 'T4' and 'S2' in 2019_05
         df.dropna(axis=1,how='all',inplace=True)
+        
     # drop a row if all values are NaN, reset index
     df.dropna(axis=0,how='all',inplace=True)
     df=df.reset_index(drop=True)
@@ -544,14 +657,10 @@ def getL1(filename, bid, figspath=None):
         
     # set out of range submergence values to invalid
     if 'SUB' in df.columns:
-        subcount = df['SUB'].value_counts()
-        try:
-            if 100.0 not in subcount or subcount[1.0] > subcount[100.0]:
-                df['SUB'] *= 100.
-        except:
-            pass
+        if df.loc[(df['SUB']!=-999),'SUB'].max() <=1:  # check if range is 0-1, if so covert to %
+            df['SUB'] *= 100.
         df.loc[(df['SUB']<0.),'SUB'] = np.NaN
-        df.loc[(df['SUB']>100.),'SUB'] = np.NaN   # WHY CAN'T I DO OR???   gdi
+        df.loc[(df['SUB']>100.),'SUB'] = np.NaN   # WHY CAN'T I DO OR???   
 
     if bid in '300234067936870':  # 2019 W9 changed May 2023 to reflect pressure data beginning of time series. Not sure what is going on.
         pdepths = [9.0]
@@ -573,11 +682,13 @@ def getL1(filename, bid, figspath=None):
             # if (col.startswith('D') or col.startswith('P')) and 'Da' not in col:
             if col.startswith('P'):
                 ax.plot(df['Dates'],-1*df[col],'.')
+                # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
             elif 'Lat' in col:
                 if bid in ['300234060340370','300234060236150','300234064737080','300234065419120','300234068514830','300234067939910','300534063807110','300534062896730']:  
                     # 2014-11, 2014-13, 2017-04, 2017-05, 2019-01 2020-JW2, 2022-04 2022-09
                     df.loc[(df['Lon'])<0,'Lon'] += 360
-                ax.plot(df['Lon'],df[col],'.')
+                ax.plot(df['Lon'],df[col],'.-')
                 ax.plot(df['Lon'].iloc[0],df[col].iloc[0],'go')
                 ax.plot(df['Lon'].iloc[-1],df[col].iloc[-1],'ro')
             elif 'Lon' in col:
@@ -588,12 +699,7 @@ def getL1(filename, bid, figspath=None):
             elif 'T0' in col:
             # elif col.startswith('T'):                
                 for ii,tcol in enumerate(tcols):
-                    # fig,ax = plt.subplots(1,1,figsize=(15,5))
                     ax.plot(df['Dates'],df[tcol],'*',color=colorList[ii],ms=3)
-                    # ax.set_title(tcol)
-                    # plt.show()
-                    # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-                    # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))
             elif 'Ta' in col:
                 ax.plot(df['Dates'],-1*df[col],'.')
             elif 'Dest0' in col:
@@ -865,9 +971,11 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     by *= 1000
     [bi,bj] = polar_lonlat_to_ij(blon, blat, grid_size, hemisphere)  #i is to x as j is to y and they do +delta
     buoyloc = np.array([[bx,by]])
+    # print('list of b',bx,by,bi,bj)
 
     # get ice map
     strdate = f'{int(byear)}{int(bmonth):02}{int(bday):02}'
+    # print('strdate',strdate)
     objdate = dt.datetime.strptime(strdate,'%Y%m%d')
     if objdate < dt.datetime(2023,1,1):  # g02202(climate data record)
         icefile = f'{int(byear)}/seaice_conc_daily_nh_{strdate}_f17_v04r00.nc'
@@ -879,12 +987,13 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
         icesrc = 'NSIDC-g02202'
 
         icemapDate = {'300234060320940':['20200301','20200601','20200801'],
-                      '300234060320930':['20200301','20200601','20200731']}
+                      '300234060320930':['20200301','20200601','20200731'],
+                      '300534062894730':['20221020'] }
         if bid in icemapDate.keys():
              # check ice cover
             if strdate in icemapDate[bid]:
                 if not os.path.isfile(f'{figspath}/IceMap_{strdate}.png'):
-                    print(strdate)
+                    print('line 996',strdate)
                     fig2, ax2 = plt.subplots(1,figsize=(8.3,10))
                     ax2 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
                     ax2.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
@@ -1025,7 +1134,6 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
         chd.clabel(inline=True)
 
         plt.show()
-        exit(-1)
 
     # if plott:
         # indd = np.argwhere(dist2==mindist)
@@ -1332,6 +1440,11 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
                   'Marlin-Yug':  {20:7,40:14,60:26,80:42},
                   'MetOcean':    {20:4,40: 8,60:12,80:12}
                   }
+    columns = Pcols.copy()
+    columns.insert(0,'removePspikes')
+    dfSpikeRem = pd.DataFrame(columns=columns)
+    dfSpikeRem['removePspikes'] = ['% Removed','Before','After']
+    dfSpikeRem.set_index('removePspikes',inplace=True)
     # if len(Pcols)>1:
     # # compute all the spikes, according to table in Level2_QC_doc.php
     #     for ii,pcol in enumerate(Pcols):
@@ -1344,6 +1457,9 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
     # else:
     
     for ii,pcol in enumerate(Pcols):
+        dfSpikeRem[pcol].loc['Before'] = df1[pcol].count()
+        print(df1[pcol].count(),len(df1))
+
         df1['mask'] = df1[pcol].isna()  # mask because interpolate interpolates through all the nans
         fig,ax = plt.subplots(2,1,figsize=(15,5),sharex=True)
         df1['dh'] = df1['Dates'].diff().apply(lambda x: x/np.timedelta64(1,'h'))
@@ -1354,6 +1470,8 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
         ax[0].set_title(f'Pressure change in db/hr for {pcol}')
         ax[1].plot(df1['Dates'],-1*df1[pcol],'r.-')
         df1.loc[(df1['dPdh'].abs()>spikeLimit[brand][limit]),pcol] = np.nan
+        dfSpikeRem[pcol].loc['After'] = df1[pcol].count()
+        dfSpikeRem[pcol].loc['% Removed'] = (dfSpikeRem[pcol].loc['Before'] - dfSpikeRem[pcol].loc['After']) / dfSpikeRem[pcol].loc['Before'] *100
         ax[1].plot(df1['Dates'],-1*df1[pcol],'b.-')
         # interpolat through nans, mask out original nans
         df1[pcol].interpolate(method='linear',inplace=True)
@@ -1362,7 +1480,7 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
         ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[spikeLimit[brand][limit],spikeLimit[brand][limit]],'--',color='gray')
         ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1*spikeLimit[brand][limit],-1*spikeLimit[brand][limit]],'--',color='gray')
         ax[0].set_xlim([df1['Dates'].iloc[0],df1.loc[(df1['dPdh'].last_valid_index()),'Dates']])  
-        ax[1].plot(df1['Dates'],-1*df1[pcol],'g--')
+        ax[1].plot(df1['Dates'],-1*df1[pcol],'g.',ms=3)
         ax[0].xaxis.set_major_locator(mdates.MonthLocator(interval=3))
         ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
         if dt1 is not None:
@@ -1372,6 +1490,9 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
         plt.show()
         df1.drop(['dPdh','dh'],axis=1,inplace=True)
     df1.drop(columns=['mask'],inplace=True)
+    dfSpikeRem = dfSpikeRem.T
+    dfSpikeRem['% Removed'] = dfSpikeRem['% Removed'].map(lambda x: '{:.2f}'.format(x))
+    dfSpikeRem.to_csv((f'{figspath}/removePspikes.csv'))
 
     # if len(Pcols)>1:  
     #     fig,ax = plt.subplots(len(Pcols)-1,1,figsize=(12,12),sharex=True)   
@@ -1401,18 +1522,41 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
 
 
 
-def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike filtering algorithm in action" in Level2_QC_doc.php
+def removeTspikes(bid,df1,tdepths,figspath,Dcols=None,sdepths=None): # working from "Example of spike filtering algorithm in action" in Level2_QC_doc.php
     # get columns that might need spike removal
     Tcols = [col for col in df1.columns if col.startswith('T') and not col.startswith('Tilt')]
-    Dcols = [col for col in df1.columns if col.startswith('D') and not col.startswith('Da') and not col.startswith('Dest')]
+    if Dcols is None:
+        Dcols = [col for col in df1.columns if col.startswith('D') and not col.startswith('Da') and not col.startswith('Dest') and not col.startswith('Dss')]
     colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
  
-    # 1 compute spike magnitudes
+    # make dataframe for saving 'removal' stats
+    columns = Tcols.copy()
+    if sdepths is not None:
+        Scols = [col for col in df1.columns if col.startswith('S') and not col.startswith('SUB')]
+        print('Scols',Scols)
+        columns.extend(Scols)
+    columns.insert(0,'removeTspikes')
+    dfSpikeRem = pd.DataFrame(columns=columns)
+    dfSpikeRem['removeTspikes'] = ['% Removed','Before','After']
+    dfSpikeRem.set_index('removeTspikes',inplace=True)
+    print(dfSpikeRem.head())
+    print('Tcols',Tcols)
+    print('Scols',Scols)
+    # if os.path.exists(f'{figspath}/removeTspikes.csv'):
+    #     os.remove(f'{figspath}/removeTspikes.csv')
+    # dfSpikeRem.to_csv((f'{figspath}/removeTspikes.csv'))
+    # exit(-1)
     for ii,tcol in enumerate(Tcols):
+        print(ii,tcol)
+        print(df1[tcol].count())
+        dfSpikeRem[tcol].loc['Before'] = df1[tcol].count()
         # print()
         # print(ii,tcol)
+  
+        # finding T spikes per Level2_QC_doc_2023.php, section 4, ii), d)
+        # time gradient in hours
         df1['dh'] = df1['Dates'].diff().apply(lambda x: x/np.timedelta64(1,'h'))
-        # temperature gradient
+        # temperature gradient coming from the left
         df1['dTdhL'] = df1[tcol].diff() / df1['dh']
         df1['dTdhLsign'] = df1['dTdhL'].apply(lambda x: np.sign(x))
         df1['dTdhLsign'].replace(0,np.nan,inplace=True)
@@ -1423,41 +1567,72 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
 
         df1['samesign'] = np.where(df1['dTdhLsign'] == df1['dTdhRsign'], True, False) # does not inclued two nans
         df1[f'spike{tcol[1:]}'] = df1[['dTdhL','dTdhR']].abs().min(axis=1).mul(df1['dTdhLsign'])
+        # df1[f'spike{tcol[1:]}'] = df1.loc[(df1[f'spike{tcol[1:]}']<=1),f'spike{tcol[1:]}'] = 0  # added this 7/17/23
+        # df1[tcol] = df1.loc[(df1[f'spike{tcol[1:]}']>1),tcol] = np.nan  # added this 7/17/23
+        
         df1[f'spike{tcol[1:]}'].mask(~df1['samesign'],inplace=True)   # mask says remove the True
         df1[f'spike{tcol[1:]}'].replace(np.nan,0,inplace=True)
+        df1[f'NonSpikeT{tcol[1:]}'] = df1.loc[(df1[f'spike{tcol[1:]}']==0),tcol]
+        # fig,ax = plt.subplots(1,1,figsize=(12,6))
+        # ax.plot(df1['Dates'],df1[f'spike{tcol[1:]}'],'r.')
+        # ax.set_title('all temps(g), non-spike temps(m), spike(r)')
+        # ax.set_ylabel(f'Tspike business for {tcol}')
+        # secax = ax.twinx()
+        # secax.spines['right'].set_color('green')        
+        # secax.set_ylabel(f'Temperatures at {tcol}, C',color='g')
+        # secax.plot(df1['Dates'],df1[tcol],'g.')
+        # secax.plot(df1['Dates'],df1[f'NonSpikeT{tcol[1:]}'],'m.',ms=3)
+        # # print(df1.head(10))
+        # plt.show()
         df1.drop(['dh','dTdhL','dTdhLsign','dTdhR','dTdhRsign','samesign'],axis=1,inplace=True)
         
-    # fig,ax = plt.subplots(1,1)
-    # spikecols = [col for col in df1.columns if col.startswith('spike')]
-    # for ii,spikecol in enumerate(spikecols):
-    #     ax.plot(df1['Dates'],df1[spikecol],'.-',color=colorList[ii])
-    # plt.show()
+    fig,ax = plt.subplots(1,1)
+    spikecols = [col for col in df1.columns if col.startswith('spike')]
+    print('spikecols',spikecols)
+    for ii,spikecol in enumerate(spikecols):
+        ax.plot(df1['Dates'],df1[spikecol],'.-',color=colorList[ii])
+    plt.show()
     # exit(-1)
-    # print(df1[['T5','T6','T11','T12','spike5','spike6','spike11','spike12']].head(50))        
-
+    # print(df1[['T0','spike0','NonSpikeT0']].head(10))        
+    # print()
     # 2. find envelope of min and max of non-spike points within 2day and 6m 
     #   get temperatures at 1m intervales in depth, make new dataframe 
-    dfT = df1[[col for col in Tcols]]
-    dfD = df1[[col for col in Dcols if 'Dsst' not in col]]
-    print('Tcols',Tcols)
+    dfT = df1[[col for col in df1.columns if col.startswith('NonSpikeT')]]
+    dfD = df1[[col for col in Dcols]]
+    print('dfT',dfT.shape)
+    print(dfT.head(10))
     print('Dcols',Dcols)
-    # fig10,ax10 = plt.subplots(2,1,sharex=True)
-    # ch10 = ax10[0].imshow(dfD.T.to_numpy())
-    # ax10[0].set_aspect('auto')
-    # ax10[0].set_title('depths')
-    # fig10.colorbar(ch10,ax=ax10[0])
-    # ch10 = ax10[1].imshow(dfT.T.to_numpy())
-    # ax10[1].set_title('temps')
-    # ax10[1].set_aspect('auto')
-    # fig10.colorbar(ch10,ax=ax10[1])
-    # plt.show()
+    # exit(-1)
+    fig10,ax10 = plt.subplots(2,1,sharex=True)
+    ch10 = ax10[0].imshow(dfD.T.to_numpy())
+    ax10[0].set_aspect('auto')
+    ax10[0].set_title('depths')
+    fig10.colorbar(ch10,ax=ax10[0])
+    ch10 = ax10[1].imshow(dfT.T.to_numpy())
+    ax10[1].set_title('temps')
+    ax10[1].set_aspect('auto')
+    fig10.colorbar(ch10,ax=ax10[1])
+    plt.show()
     tdata = dfT.to_numpy()
     #   make interpolated temps dataframe
     dfTi = pd.DataFrame(index=df1.index,columns=np.arange(0,int(tdepths[-1])+1))
+    print(len(dfTi))
+    print(dfTi.columns)    
     for ii,row in dfT.iterrows():
-        dfTi.iloc[ii] = np.interp(np.arange(0,int(tdepths[-1])+1),dfD.iloc[ii],dfT.iloc[ii])
+        d = np.array(dfD.iloc[ii])
+        t = np.array(dfT.iloc[ii])
+        if ~np.isnan(t).all():
+            dfTi.iloc[ii] = np.interp(np.arange(0,int(tdepths[-1])+1),d[~np.isnan(t)],t[~np.isnan(t)])
+        # print(ii,dfTi.iloc[ii])
     tinterp = dfTi.to_numpy(dtype='float')
-    
+    print('tinterp shape',tinterp.shape)
+    fig11,ax11 = plt.subplots(1,1)
+    ch11 = ax11.imshow(tinterp.T)
+    ax11.set_aspect('auto')
+    ax11.set_title('temperatures interpolated to 1m depths')
+    fig11.colorbar(ch11)
+    plt.show()
+
     # fig,ax = plt.subplots(1,1)
     # ch = ax.imshow(tdata.T,vmin=-5,vmax=5)
     # ax.set_aspect('auto')
@@ -1469,12 +1644,16 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
     # plt.show()
     # exit(-1)
     
-    # remove dfTi temperatures if spikeMag is not zero, these are the temps we'll use to find min and max
-    spikeCols = [col for col in df1.columns if col.startswith('spike')]
-    for spikecol in spikeCols:
-        dfTi.loc[(df1[spikecol] != 0),round(tdepths[int(spikecol[5:])])] = np.nan
+    # remove dfTi temperatures if spikeMag is not zero, then these are the temps we'll use to find min and max
+    ## spikeCols = [col for col in df1.columns if col.startswith('spike')]
+    ## print('spikeCols',spikeCols)
+    ## for spikecol in spikeCols:
+    ##     dfTi.loc[(df1[spikecol] != 0),round(tdepths[int(spikecol[5:])])] = np.nan
     
     #   get min and max values within two days and 3m of thermistor measurement
+    tidepths = np.arange(0,int(tdepths[-1])+1)
+    # print('tidepths',tidepths)
+    # exit(-1)
     for ii,col in enumerate(zip(Tcols,Dcols)):
         df1[f'T{col[0][1:]}max'] = np.nan
         df1[f'T{col[0][1:]}min'] = np.nan
@@ -1484,13 +1663,27 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         # Max and Min OF NON SPIKE POINTS
         for jj, row in df1.iterrows():
             if not np.isnan(df1[col[0]].iloc[jj]): 
-                dateMask = (df1['Dates'] >= df1['Dates'].iloc[jj] - dt.timedelta(days=2)) & (df1['Dates'] <= df1['Dates'].iloc[jj] + dt.timedelta(days=2))
+                # if ii==5:
+                #     print(tdepths[int(col[0][1:])])
+                #     print(round(tdepths[int(col[0][1:])])-3)
+                #     print(round(tdepths[int(col[0][1:])])+4)
+                #     print(round(tdepths[int(col[0][1:])])+1)
+                #     print(np.arange(max(round(tdepths[int(col[0][1:])])-3,0),min(round(tdepths[int(col[0][1:])])+4,int(tdepths[-1])+1)))
+                #     exit(-1)
+                dateMask = (df1['Dates'] >= df1['Dates'].iloc[jj] - dt.timedelta(days=1)) & (df1['Dates'] <= df1['Dates'].iloc[jj] + dt.timedelta(days=1))
                 df1[f'T{col[0][1:]}max'].iloc[jj] = dfTi.loc[dateMask, np.arange(max(round(tdepths[int(col[0][1:])])-3,0),min(round(tdepths[int(col[0][1:])])+4,int(tdepths[-1])+1))].max().max()
                 df1[f'T{col[0][1:]}min'].iloc[jj] = dfTi.loc[dateMask, np.arange(max(round(tdepths[int(col[0][1:])])-3,0),min(round(tdepths[int(col[0][1:])])+4,int(tdepths[-1])+1))].min().min()
                 df1[f'T{col[0][1:]}range'] = df1[f'T{col[0][1:]}max'] - df1[f'T{col[0][1:]}min']
 
         fig,ax = plt.subplots(1,1,figsize=(12,8))
-        ax.plot(df1['Dates'],df1[col[0]],'k.-')
+        l1 = max(round(tdepths[int(col[0][1:])])-3,0)
+        l2 = min(round(tdepths[int(col[0][1:])])+4,int(tdepths[-1])+1)
+        print(dfTi.head())
+        print(dfTi.columns)
+        print('l1 and l2',l1,l2)
+        for ll in np.arange(l1,l2):
+            ax.plot(df1['Dates'],dfTi.loc[:,ll],'gray',linewidth=0.5)
+        ax.plot(df1['Dates'],df1[col[0]],'kx-')
         # ax.set_ylim([-10,10])
         secax = ax.twinx()
         secax.spines['right'].set_color('red')
@@ -1507,13 +1700,13 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         maxYs = [max(   df1[f'T{col[0][1:]}range'].div(2)), max(df1[f'spike{col[0][1:]}']), max(df1[f'T{col[0][1:]}'])]
         maxY = np.nanmin([x for x in maxYs if x != -np.inf])
         print()
-        ax.set_ylim(minY,maxY)
+        # ax.set_ylim(minY,maxY)
             
         # 3. use range (Tmax-Tmin) to set allowable thresholds for pos/neg spikes
         secax.plot(df1['Dates'],df1[f'T{col[0][1:]}range'].div(2),'r')        
         secax.plot(df1['Dates'],-1*df1[f'T{col[0][1:]}range'].div(2),'b')   
         
-        secax.set_ylim(minY,maxY)
+        # secax.set_ylim(minY,maxY)
         try:
             ax.set_xlim([df1['Dates'].iloc[0],df1.loc[(df1[f'T{col[0][1:]}range'].last_valid_index()),'Dates']])
         except:
@@ -1521,20 +1714,114 @@ def removeTspikes(bid,df1,tdepths,figspath): # working from "Example of spike fi
         ax.set_title(f'Finding Spikes for {col[0]}: temperature(k), temperature range(g), spikes(r/b), half range(r/b)')
         # plt.show()
         
+        print('before spike removal', col[0],df1[col[0]].count())
+        # remove salinity at same depth, if applicable, and do it before  removing the temperature
+        try: 
+            jj = sdepths.index(tdepths[ii])
+            print('column of sal at same depth as T',Scols[jj])
+            dfSpikeRem[Scols[jj]].loc['Before'] = df1[Scols[jj]].count()
+            print('Number of Sals BEFORE spike removal', Scols[jj],df1[Scols[jj]].count())
+            df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
+                    ((df1[f'spike{col[0][1:]}'].abs()>1)) &
+                    ((df1[col[0]]>df1[f'T{col[0][1:]}max']) | (df1[col[0]]<df1[f'T{col[0][1:]}min'])),Scols[jj]] = np.nan
+            print('Number of Sals AFTER spike removal', Scols[jj],df1[Scols[jj]].count())
+            dfSpikeRem[Scols[jj]].loc['After'] = df1[Scols[jj]].count()
+            dfSpikeRem[Scols[jj]].loc['% Removed'] = (dfSpikeRem[Scols[jj]].loc['Before'] - dfSpikeRem[Scols[jj]].loc['After']) / dfSpikeRem[Scols[jj]].loc['Before'] *100
+        except:
+            print('that depth not in sdepths')
+        # remove temp if spike is outside half of range and ( > max or < min)  
         df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
                 ((df1[f'spike{col[0][1:]}'].abs()>1)) &
                 ((df1[col[0]]>df1[f'T{col[0][1:]}max']) | (df1[col[0]]<df1[f'T{col[0][1:]}min'])),col[0]] = np.nan
+                
+        # if tdepths[ii] in sdepths:
+        #     print('within if tdepths statement',col[0])
+        #     print(tdepths)
+        print('The col were working on',col[0])
+        print('after spike removal', col[0],df1[col[0]].count())
+        dfSpikeRem[col[0]].loc['After'] = df1[col[0]].count()
+        dfSpikeRem[col[0]].loc['% Removed'] = (dfSpikeRem[col[0]].loc['Before'] - dfSpikeRem[col[0]].loc['After']) / dfSpikeRem[col[0]].loc['Before'] *100
         ax.plot(df1['Dates'],df1[col[0]],'m.')
         print(df1.columns)
+        print(df1.head())
         fig.savefig(f'{figspath}/Tspikes{col[0][1:]}.png')
+    dfSpikeRem = dfSpikeRem.T
+    dfSpikeRem['% Removed'] = dfSpikeRem['% Removed'].map(lambda x: '{:.2f}'.format(x))
+    dfSpikeRem.to_csv((f'{figspath}/removeTspikes.csv'))
         # plt.show()
   
     df1.drop([col for col in df1.columns if col.startswith('spike')],axis=1,inplace=True)
+    df1.drop([col for col in df1.columns if col.startswith('NonSpike')],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'max' in col],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'min' in col],axis=1,inplace=True)
     df1.drop([col for col in df1.columns if 'range' in col],axis=1,inplace=True)
- 
+    print(df1.columns)
+    
+    
     return df1
+
+def removeSspikes(bid,df1,sdepths,figspath,dt1=None,dt2=None):
+    # THIS DOES NOT WORK YET
+    # get columns that might need spike removal
+    Scols = [col for col in df1.columns if col.startswith('S') and not col.startswith('SUB')]
+    Scols=['S3']
+    # spikeLimit = 0.2  # psu/hour
+
+    # used for testing limits
+    columns=[f'{item:.2f}' for item in np.arange(0.05,0.3,0.05)]
+    columns.insert(0,'None')
+    dfLimit = pd.DataFrame(columns=columns)
+    for jj,spikeLimit in enumerate(np.arange(0.05,0.3,0.05)): # psu/hour
+        print(spikeLimit)
+        for ii,scol in enumerate([item for item in Scols]):
+            dfLimit['None'] = df1[scol].count()
+            df1['mask'] = df1[scol].isna()  # mask because interpolate interpolates through all the nans
+            df1[f'{scol}MA'] = df1[scol]  #  work on a copy
+            
+            fig,ax = plt.subplots(2,1,figsize=(15,5),sharex=True)
+            df1['dh'] = df1['Dates'].diff().apply(lambda x: x/np.timedelta64(1,'h'))    
+            # salinity gradient
+            df1['dSdh'] = df1[f'{scol}MA'].diff() / df1['dh']
+            # ax[0].plot(df1['Dates'],df1[scol].diff(),'.-')
+            # ax[0].grid()
+            # ax[1].plot(df1['Dates'],df1['dh'],'.-')
+            # ax[1].grid()
+            # ax[2].plot(df1['Dates'],df1['dSdh'],'.-')
+            # ax[2].grid()
+            ax[0].plot(df1['Dates'],df1['dSdh'],'r.-')
+            ax[0].set_title(f'Salinity change in psu/hr for {scol}')
+            ax[1].plot(df1['Dates'],df1[f'{scol}MA'],'r.-')
+            print('Before',np.int(df1[f'{scol}MA'].count()),f'{spikeLimit:.2f}')
+            # df1.loc[(df1['dSdh'].abs()>spikeLimit),scol] = np.nan   # USED FOR WHEN WE ARE NOT TESTING LIMITS
+            # dfLimit.loc[ii,f'{spikeLimit:.2f}'] = np.int(df1[scol].count())
+            # ax[1].plot(df1['Dates'],df1[scol],'b.-',ms=6)
+            df1.loc[(df1['dSdh'].abs()>spikeLimit),f'{scol}MA'] = np.nan
+            dfLimit.loc[ii,f'{spikeLimit:.2f}'] = np.int(df1[f'{scol}MA'].count())
+            ax[1].plot(df1['Dates'],df1[f'{scol}MA'],'b.-',ms=6)
+            # interpolate through nans, mask out original nans
+            df1[f'{scol}MA'].interpolate(method='linear',inplace=True)
+            df1.loc[(df1['mask']),f'{scol}MA'] = np.nan
+            print('After',df1[f'{scol}MA'].count())
+    
+            ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[spikeLimit,spikeLimit],'--',color='gray')
+            ax[0].plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1*spikeLimit,-1*spikeLimit],'--',color='gray')
+            ax[0].set_xlim([df1['Dates'].iloc[0],df1.loc[(df1['dSdh'].last_valid_index()),'Dates']])  
+            ax[1].plot(df1['Dates'],df1[f'{scol}MA'],'g.',ms=3)
+            ax[0].xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+            ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+            if dt1 is not None:
+                ax[0].set_xlim([dt1,dt2])
+            ax[1].set_title(f'Salinity original(r), after removal >{spikeLimit:.2f}(b), after interpolation(g--), {scol}')
+            plt.savefig(f'{figspath}/{scol}spikes{spikeLimit:.2f}.png')    
+            plt.show()
+            # print(dfLimit.head())
+            # exit(-1)
+            df1.drop(['dSdh','dh',f'{scol}MA'],axis=1,inplace=True)
+        df1.drop(columns=['mask'],inplace=True)
+    dfLimit.to_csv(f'{figspath}/SspikeLimits.csv')
+    
+    return df1        
+
 
 
 # def makeL2(df,bid,path):

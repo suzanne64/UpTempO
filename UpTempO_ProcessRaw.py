@@ -247,7 +247,7 @@ def processPG(bid,L2p=False):
 
     if L2p:
         binf = BM.BuoyMaster(bid)
-        rawpath = f'UPTEMPO/L1_SASSIE/UpTempO_{bid}_09-01-2022-05-01-2023.csv'
+        rawpath = f'UPTEMPO/L1_SASSIE/UpTempO_{bid}_09-01-2022-06-01-2023.csv'
     else:
         rawpath='UPTEMPO/PG_LastDownload_'+bid+'.csv'
     df = pd.read_csv(rawpath,parse_dates=['DeviceDateTime'])
@@ -391,6 +391,7 @@ def processMicroSWIFT(ID,bid):
     dates = [dt.datetime.combine(dt.datetime.fromordinal(int(t))-dt.timedelta(days=366),dt.datetime.min.time()) + dt.timedelta(days=t-int(t)) for t in time]  # + dt.timedelta(days=1) - dt.timedelta(days=366) 
     lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
     lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
+    battery = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['battery'])])])
 
     # make a dictionary relating times to geophysical vars
     timedepth = {}
@@ -413,14 +414,17 @@ def processMicroSWIFT(ID,bid):
     [columns.append(f'CTdepth-{ii}') for ii in range(ndepths)]
     [columns.append(f'WaterTemp-{ii}') for ii in range(ndepths)]
     [columns.append(f'Salinity-{ii}') for ii in range(ndepths)]
+    columns.append('BATT')
     # [columns.append(f'DriftSpd-{ii}') for ii in range(ndepths)]
     # [columns.append(f'DriftDirT-{ii}') for ii in range(ndepths)]
     # create dataFrame
     dfSwift = pd.DataFrame(columns=columns)
+    print(dfSwift.columns)
 
     dfSwift['Date'] = dates 
     dfSwift['Lat'] = lat
     dfSwift['Lon'] = lon
+    dfSwift['BATT'] = battery
 
     for ii in range(ndepths):  # establish columns
         dfSwift[f'CTdepth-{ii}'] = np.nan
@@ -865,7 +869,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
     if newdead: newfname=fname.replace('Last','FINAL')
     else: newfname=fname.replace('Last',strtoday)
     if L2p:
-        newfname = fname.replace('Last','20230501')
+        newfname = fname.replace('Last','20230601')
 
     if L2p:
         os.system('cp UPTEMPO/L1_SASSIE/'+fname+' UPTEMPO/L1_SASSIE/'+newfname)
