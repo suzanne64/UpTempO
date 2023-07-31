@@ -75,22 +75,23 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2'
 # bid = '300534063807110'  # 2022 04  SASSIE
 # bid = '300534063803100'  # 2022 05  SASSIE  long
 # bid = '300534062892700'  # 2022 06  SASSIE  no pressures
-# bid = '300534062894700'  # 2022 07  SASSIE  no pressures
+bid = '300534062894700'  # 2022 07  SASSIE  no pressures
 # bid = '300534062894740'  # 2022 08  SASSIE
 # bid = '300534062896730'  # 2022 09  SASSIE  long
 # bid = '300534062894730'  # 2022 10  SASSIE
 # bid = '300534062893700'  # 2022 11  SASSIE
 # bid = '300534062895730'  # 2022 12  SIZRS 3 press
 
-# ArcticAIR
-bid = '300434064041440'  # 2023 01  NOAA 
+# bid = '300434064041440'  # 2023 01  NOAA 
 # bid = '300434064042420'  # 2023 02  NOAA 
-# bid = '300534063704980'  # 2023 03  NOAA 
+# bid = '300434064046720'  # 2023 03  NOAA 
 # bid = '300434064042710'  # 2023 04  NOAA 
+# bid = '300534062891690'  # 2023 05 Healy
+# bid = '300534062893740'  # 2023 06 Healy
+# bid = '300534062895700	'  # 2023 07 Healy
 
 
-
-# buoys already converted and used for writing/testing code. 
+# buoys already converted and/or used for writing/testing code. 
 # bid = '300234064735100'    # 2018 02  3 pres
 # bid = '300234065419120'   # 2017 05   3 pres
 # bid = '300234064739080'   # 2017 W6   2 pres
@@ -115,7 +116,7 @@ if not os.path.exists(figspath):
     
 
 try:
-    level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"][0]}-FINAL.dat'
+    level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"].split(" ")[0]}-FINAL.dat'
 except:
     level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{binf["name"][1]}_{binf["vessel"]}-FINAL.dat'
 try:
@@ -235,6 +236,18 @@ if '300534062894730'  in bid:  # 2022 10 SASSIE
 if '300534062893700'  in bid:  # 2022 11 SASSIE
     dt1=dt.datetime(2022,9,24)
     dt2=dt.datetime(2022,10,9)
+if '300434064041440'  in bid:  # 2023 01 NOAA
+    dt1=dt.datetime(2023,6,13)
+    dt2=dt.datetime(2023,7,21)
+if '300434064042420'  in bid:  # 2023 02 NOAA
+    dt1=dt.datetime(2023,6,13)
+    dt2=dt.datetime(2023,7,6)
+if '300434064046720'  in bid:  # 2023 03 NOAA
+    dt1=dt.datetime(2023,6,14)
+    dt2=dt.datetime(2023,7,4)
+if '300434064042710'  in bid:  # 2023 04 NOAA
+    dt1=dt.datetime(2023,6,14)
+    dt2=dt.datetime(2023,7,21)
     
 print(binf['name'][0],binf['name'][1])
 # ask if you want to do this
@@ -1477,9 +1490,12 @@ else:
     if bid in '300534063803100': # 2022 05
         df1.loc[(df1['WaterIce']==1) & (df1['T0']>-1.9),'FirstTpod'] = 0
         
-    if bid in ['300534062892700','300534062894700']: # 2022 06, 2022 07
+    if bid in ['300534062892700','300534062894700']: # 2022 06
         df1.loc[(df1['WaterIce']==1) & (df1['T0']>-1.9),'FirstTpod'] = 0  
         
+    if bid in '300534062894700': # 2022 07
+        df1.loc[(df1['WaterIce']==1) & (df1['T0']>-1.9),'FirstTpod'] = 0  
+        df1.loc[(df1['Dates']>dt.datetime(2022,11,7,6,0,0)),'FirstSpod'] = np.nan  
         # for 2022 07, get correct date, so same for 2022 06
         # S0 shows great decrease after Oct 25, 2022 12:30
         # df1.loc[(df1['Dates']>dt.datetime(2022,10,25,12,30,0)),'FirstSpod'] = np.nan
@@ -1567,28 +1583,47 @@ else:
     ax7[1].plot(df1['Dates'],df1['T1'],'.',color='purple')
     ax7[1].plot(df1['Dates'],df1['sst'],'b.',ms=3)
     plt.show()
+    
     # Find Dsss and Dsst
-    # if there are no pressures, but more than one T and/or S
+    # if there are no pressures (depths), use nominal
     if bid in ['300534062897730','300534062892700','300534062894700']: 
-    #               2022 02        2022 06           2022 07
-        for ii,row in df1.iterrows():
-            # if isinstance(df1['FirstSpod'].iloc[ii], int):
-            df1['Dsss'].iloc[ii] = sdepths[int(df1['FirstSpod'].iloc[ii])]
+    #               2022 02        2022 06           2022 07  
+        df1['Dsst'] = df1.apply(lambda row: (tdepths[int(row['FirstTpod'])]) if pd.notnull(row['FirstTpod']) else np.nan,axis=1)
+        df1['Dsss'] = df1.apply(lambda row: (sdepths[int(row['FirstSpod'])]) if pd.notnull(row['FirstSpod']) else np.nan,axis=1)
+        # for ii,row in df1.iterrows():
+        #     df1['Dsst'].iloc[ii] = tdepths[int(df1['FirstTpod'].iloc[ii])]
+        #     df1['Dsss'].iloc[ii] = sdepths[int(df1['FirstSpod'].iloc[ii])]
     else:
+        df1['Dsst'] = df1.apply(lambda row: (row[Dtcols[int(row['FirstTpod'])]]) if pd.notnull(row['FirstTpod']) else np.nan,axis=1)
         df1['Dsss'] = df1.apply(lambda row: (row[Dscols[int(row['FirstSpod'])]]) if pd.notnull(row['FirstSpod']) else np.nan,axis=1)
-   # if SSS is invalid so are FWS and Dsss
+
+    # if there are no valid temperature/salinity data at the FWT/FWC, set FWT/FWC and depths to invalid as well.
     df1.loc[(df1['sss'].isnull()),['FirstSpod','sss','Dsss']] = np.nan
- 
-    # set depth of SST to depth of FWT
-    # if there are no pressures, but more than one T and/or S
-    if bid in ['300534062897730','300534062892700','300534062894700']:
-    #               2022 02        2022 06            2022 07
-        for ii,row in df1.iterrows():
-            df1['Dsst'].iloc[ii] = tdepths[int(df1['FirstTpod'].iloc[ii])]
-    else:
-        df1['Dsst'] = df1.apply(lambda row: (row[Dtcols[int(row['FirstTpod'])]]),axis=1)
-    # if SST is invalid so are FWT and Dsst
     df1.loc[(df1['sst'].isnull()),['FirstTpod','sst','Dsst']] = np.nan
+
+    
+#  # if there are no pressures, but more than one T and/or S
+   #  if bid in ['300534062897730','300534062892700','300534062894700']: 
+   #  #               2022 02        2022 06           2022 07
+   #      df1['Dsst'] = df1.apply(lambda row: (row[Dtcols[int(row['FirstTpod'])]]) if pd.notnull(row['FirstTpod']) else np.nan,axis=1)
+   #      # for ii,row in df1.iterrows():
+   #      #     # if isinstance(df1['FirstSpod'].iloc[ii], int):
+   #      #     df1['Dsss'].iloc[ii] = sdepths[int(df1['FirstSpod'].iloc[ii])]
+   #  else:
+   #      df1['Dsss'] = df1.apply(lambda row: (row[Dscols[int(row['FirstSpod'])]]) if pd.notnull(row['FirstSpod']) else np.nan,axis=1)
+   # # if SSS is invalid so are FWS and Dsss
+   #  df1.loc[(df1['sss'].isnull()),['FirstSpod','sss','Dsss']] = np.nan
+ 
+   #  # set depth of SST to depth of FWT
+   #  # if there are no pressures, but more than one T and/or S
+   #  if bid in ['300534062897730','300534062892700','300534062894700']:
+   #  #               2022 02        2022 06            2022 07
+   #      for ii,row in df1.iterrows():
+   #          df1['Dsst'].iloc[ii] = tdepths[int(df1['FirstTpod'].iloc[ii])]
+   #  else:
+        # df1['Dsst'] = df1.apply(lambda row: (row[Dtcols[int(row['FirstTpod'])]]),axis=1)
+    # if SST is invalid so are FWT and Dsst
+    # df1.loc[(df1['sst'].isnull()),['FirstTpod','sst','Dsst']] = np.nan
     
     print(df1.head(20))
     print()
@@ -1602,8 +1637,6 @@ else:
         
     # for some reason T0<-1.9 sneak through.
     df1.loc[(df1['sst']<-1.9),['FirstTpod','sst','Dsst']] = np.nan
-    # if there are no valid temperature data at the FWT, set FWT and depth to invalid as well
-    df1.loc[(df1['sst'].isnull()),['FirstTpod','Dsst']] = np.nan
     # ax.plot(df1['Dates'],df1['FirstTpod'],'.')
     plt.show()
     print(df1['sst'].min())
@@ -1821,11 +1854,12 @@ if bid in '300534062898720':   # 2022 01
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Oct 22, 2022 09:00 UTC when salinity data show major decrease.\n')
 if bid in '300534062897730':   # 2022 02
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to invalid after Oct 25, 2022 12:30 UTC when salinity data show major decrease.\n')
+    f2.write(f'%  NOTE: As of April 2023, we are using a value of -1.9 degC for seawater freezing point to determine when, during the cooling season, a thermistor might have transitioned from ocean to ice/snow/air temperatures. This sometimes creates unphysical, small-amplitude jumps in our SST and "depth of SST" values. We will try to create a more realistic algorithm in the future.\n')
 if bid in '300534063807110':   # 2022 04
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Nov 28, 2022 5:30 UTC when salinity data show major decrease.\n')
-
 if bid in '300534062894700':   # 2022 07
-    f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to invalid after Nov 7, 2022 when salinity data show major decrease.\n')
+    f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to invalid after Nov 7, 2022 06:00 UTC when salinity data show major decrease.\n')
+    f2.write(f'%  NOTE: As of April 2023, we are using a value of -1.9 degC for seawater freezing point to determine when, during the cooling season, a thermistor might have transitioned from ocean to ice/snow/air temperatures. This sometimes creates unphysical, small-amplitude jumps in our SST and "depth of SST" values. We will try to create a more realistic algorithm in the future.\n')
 if bid in '300534062896730':   # 2022 09
     f2.write(f'%  NOTE: Pressure biases were determined with data from mid-Jan to mid-Feb, 2023.\n')
     f2.write(f'%  NOTE: A fair amount of hand editing was done of the SBE T and S data, particularly during April 2023, to remove noisy data.\n')

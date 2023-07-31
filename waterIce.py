@@ -618,6 +618,22 @@ def getL1(filename, bid, figspath=None):
         # ax.plot(df['Lon'],df['Lat'],'.')
         # plt.show()
         # exit(-1)
+        
+    if '300434064041440' in bid: # 2023 01
+        pass
+    if '300434064042420' in bid: # 2023 02
+        pass
+    if '300434064046720' in bid: # 2023 03
+        pass
+    if '300434064042710' in bid: # 2023 04
+        pass
+    if '300534062891690' in bid: # 2023 05
+        pass
+    if '300534062893740' in bid: # 2023 06
+        pass
+    if '300534062895700' in bid: # 2023 07
+        pass
+    
     # drop a column if all values are NaN
     if '300534060649670' not in bid:  # we want to keep 'T4' and 'S2' in 2019_05
         df.dropna(axis=1,how='all',inplace=True)
