@@ -771,54 +771,40 @@ def getL2(filename, bid):
     tdepths = []
     sdepths = []
     ddepths = []
-    biodepths = []
-    pcols = []
-    pnum,tnum,snum,dnum,bionum = 1,0,0,0,0
+    tiltdepths = []
+    # pcols = []
+    pnum,tnum,snum,dnum,tiltnum = 1,0,0,0,0
 
-    # binf = BM.BuoyMaster(bid)
-    # print(binf)
-
+    # convert Level 2 .dat to pandas dataFrame
     with open(filename,'r') as f:
         lines = f.readlines()
         for ii,line in enumerate(lines):
             if line.startswith('%'):
                 if 'year' in line:
                     pass
-                if 'Ocean Pressure (dB) at Sensor #' in line: 
-                    pcols.append( int(re.search(r'\% (.*?)= Ocean Pressure ',line).group(1).strip(' ')) )
+                if 'Ocean Pressure (dB) at Sensor' in line:
+                    # pcols.append( int(re.search(r'\% (.*?)= Ocean Pressure',line).group(1).strip(' ')) )
                     columns.append(f'P{pnum}')
                     pnum += 1
-                    pdepths.append( float(re.search(r'Nominal Depth = (.*?) m\)',line).group(1).strip(' ')) )                    
-                if 'CTD Pressure at Nominal' in line:
-                    pcols.append( int(re.search(r'\% (.*?)= CTD Pressure ',line).group(1).strip(' ')) )
-                    columns.append(f'P{pnum}')
-                    pnum += 1
-                    pdepths.append( float(re.search(r'at Nominal (.*?) \(m\)',line).group(1).strip(' ')) )
-                    
-                if 'Temperature at nominal' in line:
-                    tdepths.append( float(re.search(r'at nominal depth (.*?) \(m\)',line).group(1).strip(' ')) )
+                    pdepths.append( float(re.findall("\d+\.?\d+", line)[-1].strip(' ') ))
+
+                if 'Temperature (C) at nominal depth' in line:
+                    tdepths.append( float(re.findall("\d+\.?\d+", line)[-1].strip(' ')) )
                     columns.append(f'T{tnum}')
                     tnum += 1
-                if 'CTD Temperature' in line:
-                    tdepths.append( float(re.search(r'at (.*?) \(m\)',line).group(1).strip(' ')) )
-                    columns.append(f'T{tnum}')
-                    tnum += 1
-                    
-                if 'Salinity at nominal depth' in line:
-                    sdepths.append( float(re.search(r'at nominal depth (.*?) \(m\)',line).group(1).strip(' ')) )
-                    columns.append(f'S{snum}')
-                    snum += 1
-                if 'CTD Salinity' in line:
-                    sdepths.append( float(re.search(r'at (.*?) \(m\)',line).group(1).strip(' ')) )
+
+                if 'Salinity (psu) at nominal depth' in line:
+                    sdepths.append( float(re.findall("\d+\.?\d+", line)[-1].strip(' ')) )
                     columns.append(f'S{snum}')
                     snum += 1
                     
-                if 'Sea Level Pressure' in line:
+                if 'Sea Level Pressure (mBar)' in line:
                     columns.append('BP')
                 if 'Battery Voltage' in line:
                     columns.append('BATT')
                 if 'Submergence Percent' in line:
                     columns.append('SUB')
+                    
                 if 'Open Water or Ice Indicator' in line:
                     columns.append('WaterIce')
                     
@@ -826,18 +812,30 @@ def getL2(filename, bid):
                     ddepths.append( float(re.search(r'at nominal depth (.*?) \(m\)',line).group(1).strip(' ')) )
                     columns.append(f'D{dnum}')
                     dnum += 1
-                if 'First tpod in water' in line:
+                    
+                if 'First Wet Thermistor' in line and '=' in line:
                     columns.append('FirstTpod')
+                if 'Sea Surface Temperature' in line and not 'Depth' in line and '=' in line:
+                    columns.append('sst')
+                if 'Sea Surface Temperature Depth' in line and '=' in line:
+                    columns.append('Dsst')
                     
-                if 'Bio' in line:
-                    biodepths.append( float(re.search(r'at nominal depth (.*?) \(m\)',line).group(1).strip(' ')) )
-                    columns.append(f'Bio{bionum}')
-                    bionum += 1
+                if 'First Wet Conductivity Sensor' in line and '=' in line:
+                    columns.append('FirstSpod')
+                if 'Sea Surface Salinity' in line and not 'Depth' in line and '=' in line:
+                    columns.append('sss')
+                if 'Sea Surface Salinity Depth' in line and '=' in line:
+                    columns.append('Dsss')
                     
+                # if 'Bio' in line:
+                #     biodepths.append( float(re.search(r'at nominal depth (.*?) \(m\)',line).group(1).strip(' ')) )
+                #     columns.append(f'Bio{bionum}')
+                #     bionum += 1
+                
             if line.strip('\n') == 'END':
+                
                 data = np.array([ [float(item) for item in lines[jj].split()] for jj in np.arange(ii+1,len(lines))]) #ii+1,len(lines)+1)]
-                # only get columns that match Level1
-                df = pd.DataFrame(data=data[:,:len(columns)],columns=columns)
+                df = pd.DataFrame(data,columns=columns)
                 df[df==-999] = np.NaN
                 df[df==-99] = np.NaN
                 # if pdepths:
@@ -850,72 +848,71 @@ def getL2(filename, bid):
                 #     ddepths = np.array(ddepths)
 
     df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
-    print(df.columns)
-    print()
-    print(df.head())
-    # exit(-1)
+    # print(df.columns)
+    # print()
+    # print(df.head())
 
-    if bid in ['300234064739080']:  # need to sort T and D cols by depths
-        origcols = df.columns.to_list()
-        print('originals ',origcols)
-        newcols = origcols[:6] # time and loc
-        newcolnames = origcols[:6] # time and loc
-        newcols.extend([col for col in origcols if col.startswith('P')])
-        newcolnames.extend([col for col in origcols if col.startswith('P')])
+    # if bid in ['300234064739080']:  # need to sort T and D cols by depths
+    #     origcols = df.columns.to_list()
+    #     print('originals ',origcols)
+    #     newcols = origcols[:6] # time and loc
+    #     newcolnames = origcols[:6] # time and loc
+    #     newcols.extend([col for col in origcols if col.startswith('P')])
+    #     newcolnames.extend([col for col in origcols if col.startswith('P')])
 
-        Tdict={}
-        tcols = [col for col in df.columns if col.startswith('T')]
-        for tdepth,tcol in zip(tdepths,tcols):
-            Tdict[tcol] = tdepth
-        Tdict = dict(sorted(Tdict.items(), key=lambda item:item[1]))
-        newcols.extend(Tdict.keys())
-        print('line 403',newcols)
-        # exit(-1)
-        newcols.extend([col for col in origcols if col.startswith('S')])
+    #     Tdict={}
+    #     tcols = [col for col in df.columns if col.startswith('T')]
+    #     for tdepth,tcol in zip(tdepths,tcols):
+    #         Tdict[tcol] = tdepth
+    #     Tdict = dict(sorted(Tdict.items(), key=lambda item:item[1]))
+    #     newcols.extend(Tdict.keys())
+    #     print('line 403',newcols)
+    #     # exit(-1)
+    #     newcols.extend([col for col in origcols if col.startswith('S')])
         
-        Ddict={}
-        dcols = [col for col in df.columns if col.startswith('D') and not col.startswith('Da')]
-        print('line 408 in wI',dcols,ddepths)
-        for ddepth,dcol in zip(ddepths,dcols):
-            Ddict[dcol] = ddepth
-        Ddict = dict(sorted(Ddict.items(), key=lambda item:item[1]))
-        print(Ddict)
-        newcols.extend(Ddict.keys())
-        print()
-        print('line 414',newcols)
-        # exit(-1)
+    #     Ddict={}
+    #     dcols = [col for col in df.columns if col.startswith('D') and not col.startswith('Da')]
+    #     print('line 408 in wI',dcols,ddepths)
+    #     for ddepth,dcol in zip(ddepths,dcols):
+    #         Ddict[dcol] = ddepth
+    #     Ddict = dict(sorted(Ddict.items(), key=lambda item:item[1]))
+    #     print(Ddict)
+    #     newcols.extend(Ddict.keys())
+    #     print()
+    #     print('line 414',newcols)
+    #     # exit(-1)
 
-        newcols.extend(['BATT'])        
-        newcols.extend(['WaterIce'])
-        newcols.extend(['FirstTpod'])
+    #     newcols.extend(['BATT'])        
+    #     newcols.extend(['WaterIce'])
+    #     newcols.extend(['FirstTpod'])
         
-        newcols.extend([col for col in df.columns if col.startswith('Bio')])
-        newcols.extend(['Dates'])
+    #     newcols.extend([col for col in df.columns if col.startswith('Bio')])
+    #     newcols.extend(['Dates'])
     
         
-        newcolnames.extend([f'T{n}' for n in range(len(tcols))])
-        newcolnames.extend([col for col in origcols if col.startswith('S')])
-        newcolnames.extend([f'D{n}' for n in range(len(dcols))])
-        newcolnames.extend(['BATT'])
-        newcolnames.extend(['WaterIce'])
-        newcolnames.extend(['FirstTpod'])
-        newcolnames.extend([col for col in origcols if col.startswith('Bio')])
-        newcolnames.extend(['Dates'])
+    #     newcolnames.extend([f'T{n}' for n in range(len(tcols))])
+    #     newcolnames.extend([col for col in origcols if col.startswith('S')])
+    #     newcolnames.extend([f'D{n}' for n in range(len(dcols))])
+    #     newcolnames.extend(['BATT'])
+    #     newcolnames.extend(['WaterIce'])
+    #     newcolnames.extend(['FirstTpod'])
+    #     newcolnames.extend([col for col in origcols if col.startswith('Bio')])
+    #     newcolnames.extend(['Dates'])
                         
-        # rearrange the df
-        df = df[newcols]
-        # rename the temperature columns
-        df.rename(columns=dict(zip(newcols,newcolnames)), inplace=True)
-        print(df.columns)
-        print()
-        print(df.head())
-        tdepths.sort()
-        ddepths.sort()
-        print(tdepths)
-        print(ddepths)
-    # exit(-1)
+    #     # rearrange the df
+    #     df = df[newcols]
+    #     # rename the temperature columns
+    #     df.rename(columns=dict(zip(newcols,newcolnames)), inplace=True)
+    #     print(df.columns)
+    #     print()
+    #     print(df.head())
+    #     tdepths.sort()
+    #     ddepths.sort()
+    #     print(tdepths)
+    #     print(ddepths)
+    # # exit(-1)
 
-    return df, pdepths, tdepths, ddepths, sdepths, biodepths
+    return df, pdepths, tdepths, sdepths, ddepths, tiltdepths
 
 def plotL1vL2(df1,df2,bid,casestr=None):
     pathfigs = 'UPTEMPO/WebData/LEVEL1/figs'
