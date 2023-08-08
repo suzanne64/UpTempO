@@ -69,13 +69,13 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2'
 # bid = '300534062158480'   # 2021 04   salinity ball, no pres
 # bid = '300534062158460'   # 2021 05   salinity ball, no pres
 
-# bid = '300534062898720'  # 2022 01  SASSIE
+bid = '300534062898720'  # 2022 01  SASSIE
 # bid = '300534062897730'  # 2022 02  SASSIE
 # bid = '300534063704980'  # 2022 03  SASSIE  long
 # bid = '300534063807110'  # 2022 04  SASSIE
 # bid = '300534063803100'  # 2022 05  SASSIE  long
 # bid = '300534062892700'  # 2022 06  SASSIE  no pressures
-bid = '300534062894700'  # 2022 07  SASSIE  no pressures
+# bid = '300534062894700'  # 2022 07  SASSIE  no pressures
 # bid = '300534062894740'  # 2022 08  SASSIE
 # bid = '300534062896730'  # 2022 09  SASSIE  long
 # bid = '300534062894730'  # 2022 10  SASSIE
@@ -128,126 +128,52 @@ try:
 except:
     level2Draft = f'{figspath}/UTO_{binf["name"][0]}-{binf["name"][1]}_{bid}_L2.dat'
 
-if '300234060340370' in bid:   # 2014 11
-    dt1 = dt.datetime(2014,8,28)
-    dt2 =  dt.datetime(2017,5,7)
-    dt2a = dt.datetime(2014,10,15)
-if '300234060236150' in bid:   # 2014 13
-    dt1 = dt.datetime(2014,9,4)
-    dt2 =  dt.datetime(2016,2,4)
-    # dt2a = dt.datetime(2014,10,15)
-if '300234062491420' in bid:   # 2016 04
-    dt1=dt.datetime(2016,8,22)
-    dt2=dt.datetime(2016,11,3)
-if '300234063861170' in bid:   # 2016 05
-    dt1 = dt.datetime(2016,8,31)
-    dt2 = dt.datetime(2016,11,1)    
-if '300234063991680' in bid:   # 2016 07
-    dt1 = dt.datetime(2016,9,4)
-    dt2 =  dt.datetime(2016,10,24)
-if '300234064737080' in bid:   # 2017 04
-    dt1 = dt.datetime(2017,9,10)
-    dt2a = dt.datetime(2018,1,15)
-    dt2 = dt.datetime(2019,5,19)
-if bid in '300234065419120':   # 2017 05
-    dt1 = dt.datetime(2017,10,1)
-    dt2 = dt.datetime(2017,11,15)
-if '300234062491420' in bid:
-    dt1 = dt.datetime(2016,8,22)
-    dt2 = dt.datetime(2016,11,3)
-if '300234064739080' in bid:   # 2017-W6
-    dt1 = dt.datetime(2017,3,1)
-    dt2 = dt.datetime(2018,3,1)
-if bid in '300234064735100':   # 2018 02
-    dt1 = dt.datetime(2018,9,18)
-    dt2 = dt.datetime(2018,11,5)
-if '300234067936870' in bid:  # 2019 W9
-    dt1=dt.datetime(2019,4,1)
-    dt2=dt.datetime(2019,12,15)
-if '300234060320940' in bid:  # 2019 05 Mosaic
-    dt1=dt.datetime(2019,10,27)
-    dt2=dt.datetime(2020,8,20)
-if '300234060320930' in bid:  # 2019 04 Mosaic
-    dt1=dt.datetime(2019,10,27)
-    dt2=dt.datetime(2020,8,20)
-if '300234068719480' in bid:  # 2019 03 SIZRS
-    dt1=dt.datetime(2019,9,12)
-    dt2=dt.datetime(2019,12,19)
-if '300234068519450' in bid:  # 2019 02 SIZRS
-    dt1=dt.datetime(2019,8,13)
-    dt2=dt.datetime(2022,11,8)
-    # dt1=dt.datetime(2019,12,10)  # for looking at ridging time
-    # dt2=dt.datetime(2020,1,1)
-if '300234068514830' in bid:  # 2019 01 SIZRS
-    dt1=dt.datetime(2019,7,30)
-    dt2=dt.datetime(2020,11,2)
-    dt2a=dt.datetime(2021,8,2)   
-if '300234067939910' in bid:  # 2020 JW2 Warm
-    dt1=dt.datetime(2020,4,18)
-    dt2=dt.datetime(2021,1,29)
-if '300234061160500' in bid:  # 2020 01 SIZRS
-    dt1=dt.datetime(2020,11,10)
-    dt2=dt.datetime(2021,10,3)
-if '300534060649670' in bid:  # 2021 01 SIZRS
-    dt1=dt.datetime(2021,8,24)
-    dt2=dt.datetime(2022,2,28)
-if '300534060251600' in bid:  # 2021 02 SIZRS
-    dt1=dt.datetime(2021,9,14)
-    dt2=dt.datetime(2021,12,24)
-if '300534060051570' in bid:  # 2021 03 SIZRS
-    dt1=dt.datetime(2021,9,29)
-    dt2=dt.datetime(2021,11,2)
-if '300534062158480' in bid:  # 2021 04 SIZRS
-    dt1=dt.datetime(2021,10,12)
-    dt2=dt.datetime(2021,10,24)
-if '300534062158460' in bid:  # 2021 05 SIZRS
-    dt1=dt.datetime(2021,11,1)
-    dt2=dt.datetime(2021,11,24)
-if '300534062898720' in bid:  # 2022 01 SASSIE
-    dt1=dt.datetime(2022,9,8)
-    dt2=dt.datetime(2022,10,24)
-if '300534062897730' in bid:  # 2022 02 SASSIE
-    dt1=dt.datetime(2022,9,8)
-    dt2=dt.datetime(2023,6,2)
-if '300534063704980' in bid:  # 2022 03 SASSIE
-    dt1=dt.datetime(2022,9,8)
-    dt2=dt.datetime(2022,10,27)
-if '300534063807110' in bid:  # 2022 04 SASSIE
-    dt1=dt.datetime(2022,9,10)
-    dt2=dt.datetime(2023,6,2)
-if '300534063803100' in bid:  # 2022 05 SASSIE
-    dt1=dt.datetime(2022,9,13)
-    dt2=dt.datetime(2022,9,27)
-if '300534062892700' in bid:  # 2022 06 SASSIE
-    dt1=dt.datetime(2022,9,13)
-    dt2=dt.datetime(2022,10,9)
-if '300534062894700' in bid:  # 2022 07 SASSIE
-    dt1=dt.datetime(2022,9,15)
-    dt2=dt.datetime(2023,6,2)
-if '300534062894740' in bid:  # 2022 08 SASSIE
-    dt1=dt.datetime(2022,9,18)
-    dt2=dt.datetime(2023,6,2)
-if '300534062896730' in bid:  # 2022 09 SASSIE
-    dt1=dt.datetime(2022,9,18)
-    dt2=dt.datetime(2023,6,2)
-if '300534062894730'  in bid:  # 2022 10 SASSIE
-    dt1=dt.datetime(2022,9,24)
-    dt2=dt.datetime(2022,11,2)
-if '300534062893700'  in bid:  # 2022 11 SASSIE
-    dt1=dt.datetime(2022,9,24)
-    dt2=dt.datetime(2022,10,9)
-if '300434064041440'  in bid:  # 2023 01 NOAA
-    dt1=dt.datetime(2023,6,13)
-    dt2=dt.datetime(2023,7,21)
-if '300434064042420'  in bid:  # 2023 02 NOAA
-    dt1=dt.datetime(2023,6,13)
-    dt2=dt.datetime(2023,7,6)
-if '300434064046720'  in bid:  # 2023 03 NOAA
-    dt1=dt.datetime(2023,6,14)
-    dt2=dt.datetime(2023,7,4)
-if '300434064042710'  in bid:  # 2023 04 NOAA
-    dt1=dt.datetime(2023,6,14)
-    dt2=dt.datetime(2023,7,21)
+timed = {'300234060340370': [dt.datetime(2014,8,28), dt.datetime(2017,5,7), dt.datetime(2014,10,15)],   # 2014 11  
+         '300234060236150': [dt.datetime(2014,9,4),  dt.datetime(2016,2,4),  dt.datetime(2014,10,15)],  # 2014 13
+         '300234062491420': [dt.datetime(2016,8,22), dt.datetime(2016,11,3), ''],                       # 2016 04
+         '300234063861170': [dt.datetime(2016,8,31), dt.datetime(2016,11,1), ''],                       # 2016 05
+         '300234063991680': [dt.datetime(2016,9,4),  dt.datetime(2016,10,24),''],                       # 2016 07
+         '300234064737080': [dt.datetime(2017,9,10), dt.datetime(2019,5,19), dt.datetime(2018,1,15)],   # 2017 04
+         '300234065419120': [dt.datetime(2017,10,1), dt.datetime(2017,11,15),''],                       # 2017 05
+         '300234064739080': [dt.datetime(2017,3,1),  dt.datetime(2018,3,1),  ''],                       # 2017-W6
+         '300234064735100': [dt.datetime(2018,9,18), dt.datetime(2018,11,5), ''],                       # 2018 02
+         '300234067936870': [dt.datetime(2019,4,1),  dt.datetime(2019,12,15),''],                       # 2019 W9
+         '300234060320940': [dt.datetime(2019,10,27),dt.datetime(2020,8,20), ''],                       # 2019 05 Mosaic
+         '300234060320930': [dt.datetime(2019,10,27),dt.datetime(2020,8,20), ''],                       # 2019 04 Mosaic
+         '300234068719480': [dt.datetime(2019,9,12), dt.datetime(2019,12,19),''],                       # 2019 03 SIZRS
+         '300234068519450': [dt.datetime(2019,8,13), dt.datetime(2022,11,8), ''],                       # 2019 02 SIZRS
+         '300234068514830': [dt.datetime(2019,7,30), dt.datetime(2020,11,2), dt.datetime(2021,8,2)],    # 2019 01 SIZRS
+         '300234067939910': [dt.datetime(2020,4,18), dt.datetime(2021,1,29), ''],                       # 2020 JW2 Warm
+         '300234061160500': [dt.datetime(2020,11,10),dt.datetime(2021,10,3), ''],                       # 2020 01 SIZRS
+         '300534060649670': [dt.datetime(2021,8,24), dt.datetime(2022,2,28), ''],                       # 2021 01 SIZRS
+         '300534060251600': [dt.datetime(2021,9,14), dt.datetime(2021,12,24),''],                       # 2021 02 SIZRS
+         '300534060051570': [dt.datetime(2021,9,29), dt.datetime(2021,11,2), ''],                       # 2021 03 SIZRS
+         '300534062158480': [dt.datetime(2021,10,12),dt.datetime(2021,10,24),''],                       # 2021 04 SIZRS
+         '300534062158460': [dt.datetime(2021,11,1), dt.datetime(2021,11,24),''],                       # 2021 05 SIZRS
+         '300534062898720': [dt.datetime(2022,9,8),  dt.datetime(2022,10,24),''],                       # 2022 01 SASSIE
+         '300534062897730': [dt.datetime(2022,9,8),  dt.datetime(2023,6,2),  ''],                       # 2022 02 SASSIE
+         '300534063704980': [dt.datetime(2022,9,8),  dt.datetime(2022,10,27),''],                       # 2022 03 SASSIE
+         '300534063807110': [dt.datetime(2022,9,10), dt.datetime(2023,6,2),  ''],                       # 2022 04 SASSIE
+         '300534063803100': [dt.datetime(2022,9,13), dt.datetime(2022,9,27), ''],                       # 2022 05 SASSIE
+         '300534062892700': [dt.datetime(2022,9,13), dt.datetime(2022,10,9), ''],                       # 2022 06 SASSIE
+         '300534062894700': [dt.datetime(2022,9,15), dt.datetime(2023,6,2),  ''],                       # 2022 07 SASSIE
+         '300534062894740': [dt.datetime(2022,9,18), dt.datetime(2023,6,2),  ''],                       # 2022 08 SASSIE
+         '300534062896730': [dt.datetime(2022,9,18), dt.datetime(2023,6,2),  ''],                       # 2022 09 SASSIE
+         '300534062894730': [dt.datetime(2022,9,24), dt.datetime(2022,11,2), ''],                       # 2022 10 SASSIE
+         '300534062893700': [dt.datetime(2022,9,24), dt.datetime(2022,10,9), ''],                       # 2022 11 SASSIE
+         '300434064041440': [dt.datetime(2023,6,13), dt.datetime(2023,7,21), ''],                       # 2023 01 NOAA, microSWIFT
+         '300434064042420': [dt.datetime(2023,6,13), dt.datetime(2023,7,6),  ''],                       # 2023 02 NOAA, microSWIFT
+         '300434064046720': [dt.datetime(2023,6,14), dt.datetime(2023,7,4),  ''],                       # 2023 03 NOAA, microSWIFT
+         '300434064042710': [dt.datetime(2023,6,14), dt.datetime(2023,7,21), ''],                       # 2023 04 NOAA, microSWIFT
+         '': [],
+         '': [],
+         '': [],
+         '': [],
+         }
+
+dt1 = timed[bid][0]
+dt2 = timed[bid][1]
+dt2a = timed[bid][2]
     
 print(binf['name'][0],binf['name'][1])
 # ask if you want to do this
@@ -256,8 +182,8 @@ if binf['name'][0] == '2022' and binf['name'][1] != '12':
     if procL2p.startswith('y'):        
         upp.processPG(bid,L2p=True)
         datpath, latestupdate = upp.WebFormat(bid,L2p=True)
-        level1File = f'/Users/suzanne/Google Drive/UpTempO/UPTEMPO/L1_SASSIE/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"]}-Last.dat'
-        level2Draft = f'/Users/suzanne/Google Drive/UpTempO/UPTEMPO/L1_SASSIE/UTO_{binf["name"][0]}-{int(binf["name"][1]):02d}_{bid}_L2p.dat'
+        level1File = f'/Users/suzanne/Google Drive/UpTempO/UPTEMPO/L2p_SASSIE/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"]}-Last.dat'
+        level2Draft = f'/Users/suzanne/Google Drive/UpTempO/UPTEMPO/L2p_SASSIE/UTO_{binf["name"][0]}-{int(binf["name"][1]):02d}_{bid}_L2p.dat'
 
 print(level1File)
 print(level2Draft)    
@@ -273,7 +199,8 @@ else:
     WrapCorr = 'NO'
     
 f2 = open(level2Draft,'w')
-df1,pdepths,tdepths,sdepths,ddepths,tiltdepths = getL1(level1File,bid,figspath)
+
+df1,pdepths,tdepths,sdepths,ddepths,tiltdepths,dfEdit = getL1(level1File,bid,figspath)
 # print(dfCulledStats)
 print('tdepths',tdepths)
 print('sdepths',sdepths)
@@ -323,11 +250,11 @@ print(df1.columns)
 # exit(-1)
 #  let's develop a 1d spike removal methodology akin to Pspikes
 
-# 2019 04,05  track locs in .dat files don't match website
+# 2019 02,04,05  track locs travel into the Atlantic
 if bid in ['300234060320940','300234060320930','300234068519450']:   
     # 2019-05, 2019-04, 2019-02
     uplotsL2.TrackMaps2Atlantic(bid,figspath)
-# exit(-1)
+
 Tcols = [col for col in df1.columns if col.startswith('T') and 'Ta' not in col and 'Tilt' not in col]
 #### plot temps individually on their own plot
 for ii,tcol in enumerate(Tcols):
@@ -424,7 +351,9 @@ if plotS.startswith('y'):
 # find pressure spikes and invalidate them, interpolate through
 print(binf['brand'])
 if len(pdepths)>0:
-    df1 = removePspikes(bid,df1,pdepths,figspath,brand=binf['brand'],dt1=dt1,dt2=dt2)
+    df1, dfEdit = removePspikes(bid,df1,pdepths,figspath,brand=binf['brand'],dt1=dt1,dt2=dt2,dfEdit=dfEdit)
+
+print(dfEdit.head(15))      
 
 print(len(df1.columns))
 # start making output .dat file, header is same as LEVEL 1 file
@@ -447,7 +376,6 @@ for ii,line in enumerate(lines):
                 outputCols[nn] = df1.columns[nn]  #int(ColNum[0])
                 print(df1.columns[nn],nn)
                 if bid in '300234067936870' and ('Nominal Depth' in line or 'nominal depth' in line):   # 2019 W9
-                    print('wtf',line)
                     print(line.split('epth')[-1])
                     print(float(re.findall(r"\d+\.\d+",line.split('epth')[-1])[0])-1)
                     line = line.replace(str(float(re.findall(r"\d+\.\d+",line.split('epth')[-1])[0])),
@@ -1208,9 +1136,13 @@ if len(pdepths)>0:
     ax10.set_title('temps with the noise')
     plt.show()
 
-    df1 = removeTspikes(bid,df1,tdepths,figspath,Dcols=Dtcols,sdepths=sdepths)
+    df1, dfEdit = removeTspikes(bid,df1,tdepths,figspath,Dcols=Dtcols,sdepths=sdepths,dfEdit=dfEdit)
 
-    
+    for ecol in dfEdit.columns:
+        dfEdit.loc['AfterEditing',ecol] += df1[ecol].count()
+    print(dfEdit.head(15))
+    dfEdit.to_csv(f'{figspath}/EditingStats_{binf["name"][0]}_{int(binf["name"][1]):02d}.csv')
+    exit(-1)
 # for ii,tcol in enumerate(Tcols):
 #     fig,ax = plt.subplots(1,1,figsize=(15,5))
 #     ax.plot([df1['Dates'].iloc[0],df1['Dates'].iloc[-1]],[-1.9,-1.9],'--',color='gray')
