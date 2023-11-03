@@ -139,8 +139,8 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
     df.drop(columns='Date',inplace=True)
     print(df.head())
 
-    if bid in ['300234068519450','300534062895730','300534060251600','300534060051570']:
-        #  2019-02,  2022-12, 2021-02, 2021-03
+    if bid in ['300234068519450','300534062895730','300534060251600','300534060051570','300534062897690']:
+        #        2019-02           2022-12           2021-02           2021-03           2023-13
         pcols = [col for col in df.columns if col.startswith('P') or col.startswith('CTD-P')]
         for pcol in pcols:
             df[pcol] = df[pcol]/10
@@ -149,7 +149,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
 
     # we process SASSIE earlier than before declaring the buoys dead
     if L2p:
-        df.to_csv('UPTEMPO/L1_SASSIE/'+bid+'.csv',index=False)
+        df.to_csv('UPTEMPO/L2p_SASSIE/'+bid+'.csv',index=False)
     else:
         df.to_csv('UPTEMPO/Processed_Data/'+bid+'.csv',index=False)
 
@@ -247,7 +247,7 @@ def processPG(bid,L2p=False):
 
     if L2p:
         binf = BM.BuoyMaster(bid)
-        rawpath = f'UPTEMPO/L1_SASSIE/UpTempO_{bid}_09-01-2022-06-01-2023.csv'
+        rawpath = f'UPTEMPO/L2p_SASSIE/UpTempO_{bid}_09-01-2022-06-01-2023.csv'
     else:
         rawpath='UPTEMPO/PG_LastDownload_'+bid+'.csv'
     df = pd.read_csv(rawpath,parse_dates=['DeviceDateTime'])
@@ -364,7 +364,7 @@ def processMicroSWIFT(ID,bid):
     eng = matlab.engine.start_matlab()
     eng.addpath('/Users/suzanne/git_repos/SWIFT-codes/GeneralTools')
     
-    startswift = dt.datetime(2023,6,15) 
+    startswift = dt.datetime(2023,9,19) 
     starttime = f'{startswift.year}-{startswift.month:02d}-{startswift.day:02d}T00:00:00'
     endtime = ''    # leaving endtime blank, says get data up to present.
 
@@ -541,6 +541,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
     # depDate="%.2d/%.2d/%d" % (int(depline[1]),int(depline[2]),int(depline[0]))
     fdeplat=binf['deploymentLat']
     fdeplon=binf['deploymentLon']
+    print('line 544',fdeplat,fdeplon)
 
     if fdeplat < 0:
         fdeplat=-fdeplat
@@ -575,7 +576,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
     # data=data[1:]
     # nd=len(data)
     if L2p:
-        df = pd.read_csv('UPTEMPO/L1_SASSIE/'+bid+'.csv')
+        df = pd.read_csv('UPTEMPO/L2p_SASSIE/'+bid+'.csv')
     else:
         df = pd.read_csv('UPTEMPO/Processed_Data/'+bid+'.csv')
 
@@ -854,7 +855,7 @@ def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
     #     # depline=data[0].split(' ')
 
     if L2p:
-        opw=open('UPTEMPO/L1_SASSIE/'+fname,'w')
+        opw=open('UPTEMPO/L2p_SASSIE/'+fname,'w')
     else:
         opw=open('UPTEMPO/WebData/'+fname,'w')
         
@@ -872,8 +873,8 @@ def WebFormat(bid,fts=1,order=-1,newdead=0,L2p=False):
         newfname = fname.replace('Last','20230601')
 
     if L2p:
-        os.system('cp UPTEMPO/L1_SASSIE/'+fname+' UPTEMPO/L1_SASSIE/'+newfname)
-        return 'UPTEMPO/L1_SASSIE/'+newfname, lastUpdate
+        os.system('cp UPTEMPO/L2p_SASSIE/'+fname+' UPTEMPO/L2p_SASSIE/'+newfname)
+        return 'UPTEMPO/L2p_SASSIE/'+newfname, lastUpdate
     else:
         os.system('cp UPTEMPO/WebData/'+fname+' UPTEMPO/WebData/'+newfname)
         lastUpdate="%.2d/%.2d/%d" % (today.month,today.day,today.year)

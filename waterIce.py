@@ -16,6 +16,7 @@ import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from mpl_toolkits import mplot3d 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.spatial.distance import pdist
@@ -34,12 +35,6 @@ icelevels=[0.2,0.3,0.4,0.5,0.75]
 
 def getL1(filename, bid, figspath=None):
     print('L1 file name:',filename)
-    # baseheader ={'year':'Year',         # key from Level 1, value from ProcessedRaw and used here
-    #              'month':'Month',
-    #              'day':'Day',
-    #              'hour':'Hour',
-    #              'Latitude':'Lat',
-    #              'Longitude':'Lon'}
     columns = ['Year','Month','Day','Hour','Lat','Lon']
     colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','gold','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
@@ -118,35 +113,9 @@ def getL1(filename, bid, figspath=None):
         
     df = pd.DataFrame(data=data,columns=columns)
     print(df.columns)
-    # exit(-1)
-    # make dataframe for saving editing stats, initialize all cells to zero
-    editCols = ['GPSquality','Lat','Lon']
-    Pcols = [col for col in df.columns if col.startswith('P')]
-    editCols.extend(Pcols)
-    Tcols = [col for col in df.columns if col.startswith('T') and 'Ta' not in col and 'Tilt' not in col]
-    editCols.extend(Tcols)
-    Scols = [col for col in df.columns if col.startswith('S') and not col.startswith('SUB')]
-    editCols.extend(Scols)
-    editCols.extend(['SUB'])
-    print()
-    dfEdit = pd.DataFrame(columns=editCols, index = ['Original',
-                                                     'GPSqual3',
-                                                     'DuplicateRows',
-                                                     'BeforeDeploy',
-                                                     'BadLocation',
-                                                     'Unphysical',
-                                                     'ConstantValue',
-                                                     'SUBoutofrange',
-                                                     'ReplacePressureSpikes',
-                                                     'RemoveTemperatureSpikes',
-                                                     'Miscellaneous',
-                                                     'AfterEditing'])
-    for ecol in editCols:
-        print(ecol,df[ecol].isna().sum())
-        print
-        dfEdit.loc['Original',ecol] = df[ecol].count()
-        dfEdit.loc[1:,ecol] = 0
-    print(dfEdit.head(15))
+    binf = BM.BuoyMaster(bid)
+    
+    #####
     # exit()
     # if sdepths is not None:
     #     Scols = [col for col in df1.columns if col.startswith('S') and not col.startswith('SUB')]
@@ -172,6 +141,7 @@ def getL1(filename, bid, figspath=None):
     print(df.columns)
     
     if bid in ['300234066712490','300234064739080']:  # need to sort T cols by depths
+        #        2018 JW1          2020 JW2
         origcols = df.columns.to_list()
         print('originals ',origcols)
         newcols = origcols[:6] # time and loc
@@ -205,31 +175,89 @@ def getL1(filename, bid, figspath=None):
     # drop a column if all values are NaN
     df.dropna(axis=1,how='all',inplace=True)
 
-    if df['Year'].iloc[0]>=2021:
-        if bid not in ['300534062158480','300534062158460']:   # 2021-04, 2021-05 too late to get GPS and data in same download, but all 3s
-            if 'GPSquality' in df.columns:  # microSWIFTs
-                dfEdit.loc['GPSqual3',:] = df.loc[(df['GPSquality']<3),'GPSquality'].count()
-                df.loc[(df['GPSquality']<3),:] = np.nan
-                df.dropna(axis=0,how='all',inplace=True)
-                df.reset_index(inplace=True)
-
     # add dates column for plotting
     df['Dates']=pd.to_datetime(df[['Year','Month','Day','Hour']])
-    print('first date before:', df['Dates'].iloc[0])
+
     # remove data before deployment date
     df = df[(df['Dates']>=depdate)]
     print('first date after removing those before deployment date:',df['Dates'].iloc[0])
 
+    # make dataframe for saving editing stats
+    # Edit = True
+    editCols = ['GPSquality','Lat','Lon']
+    Pcols = [col for col in df.columns if col.startswith('P')]
+    editCols.extend(Pcols)
+    Tcols = [col for col in df.columns if col.startswith('T') and 'Ta' not in col and 'Tilt' not in col]
+    editCols.extend(Tcols)
+    Scols = [col for col in df.columns if col.startswith('S') and not col.startswith('SUB')]
+    editCols.extend(Scols)
+    print()
+
+    dfEdit = pd.DataFrame(columns=editCols, index = ['Raw',
+                                                     'DuplicateRows',
+                                                     'InitialAdjustment',
+                                                     'RawActual',
+                                                     'BuoyLocationsFlagged',
+                                                     'WrappedTemperatures',
+                                                     'TemperaturesTooWarm20',
+                                                     'TemperaturesTooWarmDeep',
+                                                     'TemperaturesTooWarmWinter',
+                                                     'ConstantValue',
+                                                     'OtherUnphysicalValues',
+                                                     'PressureSpikesReplaced',
+                                                     'TemperatureSpikesRemoved',
+                                                     'Processed'])
+    # initialize all cells to zero
+    for ecol in editCols:
+        print(ecol)
+        if 'GPSquality' not in df.columns and ecol == 'GPSquality':
+            dfEdit.loc['Raw',ecol] = 0
+        else:
+            print(df[ecol].count())
+            dfEdit.loc['Raw',ecol] = len(df[ecol])
+            # dfEdit.loc['Raw',ecol] = df[ecol].count()   # doesn't include NaNs
+        # set all other rows to zero
+        dfEdit.loc[1:,ecol] = 0
+
     # implement data clean up (see weCode/LEVEL_2_IDL_CODE/READ_ME.txt)
-    dfEdit.loc['DuplicateRows',:] = df.duplicated(['Dates','Lat','Lon']).sum()
+    dfEdit.loc['DuplicateRows',:] += df.duplicated(['Dates','Lat','Lon']).sum()
+    # reset 'GPSquality' to zero if that var not available.
+    if 'GPSquality' not in df.columns:
+        dfEdit.loc['DuplicateRows','GPSquality'] = 0
+    print(dfEdit.head(20))
+
+    # # sum up number of processed data points
+    # for ecol in dfEdit.columns:
+    #     dfEdit.loc['Processed',ecol]  += (dfEdit.loc['Raw',ecol] - 
+    #                                   dfEdit.loc['BuoyLocationsFlagged',ecol] -
+    #                                   dfEdit.loc['InitialAdjustment',ecol] -
+    #                                   dfEdit.loc['DuplicateRows',ecol] -
+    #                                   dfEdit.loc['UnphysicalValues',ecol] -
+    #                                   dfEdit.loc['TemperatureSpikesRemoved',ecol])
+    # print(dfEdit.head(15))
+
+    # remove duplicate rows
     df.drop_duplicates(['Dates','Lat','Lon'],keep='last',inplace=True)  # like Wendy (see 2016-=06)
     df.reset_index(drop=True,inplace=True)
-    print(dfEdit.head(15))
-
-    # sort by increasing date, over four cols
+    # make sure dates are sorted
     df.sort_values(by=['Dates'],inplace=True)
     df.reset_index(drop=True,inplace=True)
 
+######### this has to be done AFTER initial adjustment and rawActual -- so in each paragraph
+    # if df['Year'].iloc[0]>=2021:  # when we extract GPSquality with original data
+    #     if bid not in ['300534062158480','300534062158460']:   # 2021-04, 2021-05 too late to get GPS and data in same download, but all 3s
+    #         if 'GPSquality' in df.columns:  # what about microSWIFTs
+    #             # fig,ax = plt.subplots(1,1)
+    #             # ax.plot(df['Lon'],df['Lat'],'bo',markersize=10,markerfacecolor='b')
+    #             # ax.plot(df.loc[(df['GPSquality']<3),'Lon'],df.loc[(df['GPSquality']<3),'Lat'],'ro',markersize=6,markerfacecolor='r')
+    #             # plt.show()
+    #             # exit()             
+    #             dfEdit.loc['BuoyLocationsFlagged',:] = df.loc[(df['GPSquality']<3),'GPSquality'].count()
+    #             df.loc[(df['GPSquality']<3),:] = np.nan
+    #             df.dropna(axis=0,how='all',inplace=True)
+    #             df.reset_index(inplace=True)
+    #             print(dfEdit.head(15))
+    # exit()
     print(df.columns)
     pcols = [col for col in df.columns if col.startswith('P') and not col.endswith('0')]
     tcols = [col for col in df.columns if col.startswith('T') and not col.startswith('Ta') and not col.startswith('Tilt')]
@@ -237,310 +265,599 @@ def getL1(filename, bid, figspath=None):
     dcols = [col for col in df.columns if col.startswith('D') and not col.startswith('Da')]
     tiltcols = [col for col in df.columns if col.startswith('Tilt')]
     print(tcols)
-    
-    # invalidate locs if they are obviously erroneous
-    if '300234065419120' in bid:  # 2017 05
-        df.loc[(df['Lat']< 72.5) & (df['Lon']>-153) & (df['Lon']<-152.5),['Lat','Lon']] = np.NaN  # removes 1 point
-        # interpolate (linearly) to fill
-        df['Lat'].interpolate(inplace=True)
-        df['Lon'].interpolate(inplace=True)
-        
+            
 
-    # invalidate Px zero values (not including P0) and other pressure edits depending...
-    for ii,pcol in enumerate(pcols):
-        df.loc[df[pcol]==0,pcol] = np.nan
+    # # invalidate Px zero values (not including P0) and other pressure edits depending...
+    # for ii,pcol in enumerate(pcols):
+    #     df.loc[df[pcol]==0,pcol] = np.nan
 
     # data editing
     if '300234060340370' in bid:  # 2014 11
+        # no initial adjustment
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         # bad location, no GPSquality to help us
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lat']>100),'Lat'].count()
         df.loc[(df['Lat']>100),:] = np.nan
-        df.dropna(axis=0,how='all',inplace=True)
-        df.reset_index(drop=True,inplace=True)
+                
+        # unphysical values
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']>20),'P1'].count()
         df.loc[(df['P1']>20),'P1'] = np.nan
+        dfEdit.loc['ConstantValue','P2'] += df.loc[(df['P2']>32),'P2'].count()
         df.loc[(df['P2']>32),'P2'] = np.nan
         for tcol in tcols:
+            dfEdit.loc['ConstantValue',tcol] += df.loc[(df[tcol]>10),tcol].count()
             df.loc[(df[tcol]>10),tcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','T3'] += df.loc[(df['T3']>0.5),'T3'].count()
+        df.loc[(df['T3']>0.5),'T3'] = np.nan
+        dfEdit.loc['ConstantValue','T0'] += df.loc[(df['T0']==df['T0'].min()),'T0'] .count()
         df.loc[(df['T0']==df['T0'].min()),'T0'] = np.nan
         
+        print(dfEdit.head(15))
+        print('line 300',len(df))
+        # exit()
+        
     if '300234060236150' in bid:  # 2014 13
+        print(dfEdit.head(15))
+        # no initial adjustment
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+                
+        # unphysical values
         for pcol in pcols:
+            dfEdit.loc['ConstantValue',pcol] += df.loc[(df[pcol]>100),pcol].count()
             df.loc[(df[pcol]>100),pcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['Dates']>dt.datetime(2015,12,25,11,0,0)),'T0'].count()
+        df.loc[(df['Dates']>dt.datetime(2015,12,25,11,0,0)),'T0'] = np.nan
         for tcol in tcols:
             if 'T0' not in tcol:
-                df.loc[(df['Dates']>dt.datetime(2016,1,8)) & (df[tcol]>-0.55),tcol] = np.nan
-            if 'T0' in tcol:
-                df.loc[(df['Dates']>dt.datetime(2015,12,25,11,0,0)),tcol] = np.nan
+                dfEdit.loc['ConstantValue',tcol] += df.loc[(df['Dates']>dt.datetime(2016,1,8)) & (df[tcol]>-0.55),tcol].count()
+                df.loc[(df['Dates']>dt.datetime(2016,1,8)) & (df[tcol]>-0.55),tcol] = np.nan                
         df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
+        print(dfEdit.head(15))
+        # exit()
+        
+    if '300234062491420' in bid:  # 2016 04 
+        # no initial adjustment
+        print(dfEdit.head(15))
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+       
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>75.10) & (df['Lat']<75.15) & (df['Lon']>-153.00) & (df['Lon']<-152.92),'Lat'].count()
+        df.loc[(df['Lat']>75.10) & (df['Lat']<75.15) & (df['Lon']>-153.00) & (df['Lon']<-152.92),:] = np.nan
 
+        # pressures
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']==0.0),'P1'].count()
+        df.loc[(df['P1']==0.0),'P1'] = np.nan
+        
+        #  these TO are not wrapped. 
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[df['Dates']>dt.datetime(2018,11,5,18,0,0),'T0'].count()
+        df.loc[df['Dates']>dt.datetime(2018,11,5,18,0,0),'T0'] = np.NaN
+        for tcol in tcols:
+            if 'T0' not in tcol:
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[df[tcol]>6,tcol].count()
+                df.loc[df[tcol]>6,tcol] = np.NaN
+        print(dfEdit.head(15))
+        # exit()
+        
     if '300234063991680' in bid:  # 2016 07
+        print(dfEdit.head(15))
         # Drop first row, where temps have not stablized yet
+        dfEdit.loc['InitialAdjustment',dfEdit.columns != 'GPSquality'] += 1
         df.drop(index=df.index[0],axis=0,inplace=True)
         df.reset_index(drop=True,inplace=True)
+        
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
         # remove bad subsurface temps
         for tcol in tcols:
             if 'T0' not in tcol:
-                m = ((df['Dates']<=dt.datetime(2016,9,5,21,0,0)) | (df['Dates']>=dt.datetime(2016,10,20)))
-                df[tcol][m] = np.NaN
-        df.loc[(df['Dates']>dt.datetime(2016,10,22)),'P3'] = np.nan
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>=dt.datetime(2016,10,20,2,0,0)),tcol].count()
+                df.loc[(df['Dates']>=dt.datetime(2016,10,20)),tcol] = np.NaN
+        print(dfEdit.head(15))
+        
+        # pressures
         for ii,pcol in enumerate(pcols):
-            df.loc[(df[pcol] < pdepths[ii]-5) | (df[pcol] > pdepths[ii]+5),pcol] = np.nan
-
-    if '300234062491420' in bid:  # 2016 04 
-        # these TO are not wrapped. 
-        for tcol in tcols:
-            if 'T0' in tcol:
-                df.loc[df['Dates']>dt.datetime(2018,11,5,18,0,0),tcol] = np.NaN
-            if 'T0' not in tcol:
-                df.loc[df[tcol]>6,tcol] = np.NaN
+            dfEdit.loc['ConstantValue',pcol] += df.loc[(df[pcol] == 0),pcol].count()
+            df.loc[(df[pcol] == 0),pcol] = np.nan
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df['Dates']>dt.datetime(2016,10,20,2,0,0)),pcol].count()
+            df.loc[(df['Dates']>dt.datetime(2016,10,20,2,0,0)),pcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P2'] += df.loc[(df['P2']>100),'P2'].count()
+        df.loc[(df['P2']>100),'P2'] = np.nan
+                
+        print(dfEdit.head(15))
+        # exit()
 
     if '300234064737080' in bid:  # 2017 04
+        print(dfEdit.head(15))
+        # no initial adjustment
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+ 
         #True Temperature = reported value - maximum allowed value - minimum allowed value  Wrapped Temps
         maxValue = 62
         minValue = -20
+        dfEdit.loc['WrappedTemperatures','T0'] = df.loc[(df['T0']>40),'T0'].count()
         df.loc[(df['T0']>40),'T0'] -= (maxValue - minValue)
-        # remove erroneous
+        
+        # invalidate erroneous
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['Dates']<dt.datetime(2017,11,25))  & (df['T0']<-12),'T0'].count()
         df.loc[(df['Dates']<dt.datetime(2017,11,25))  & (df['T0']<-12),'T0'] = np.NaN
-        for tcol in tcols:
-            if tcol not in 'T0':
-                df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol] = np.nan
-        for ii,pcol in enumerate(pcols):
-            df.loc[(df[pcol] < pdepths[ii]-50) | (df[pcol] > pdepths[ii]+50),pcol] = np.nan
-        df.loc[(df['P1']>30),'P1'] = np.NaN
+        # for tcol in tcols:
+        #     if tcol not in 'T0':
+        #         dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol].count()
+        #         df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol] = np.nan
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']==0),'P1'].count()
+        df.loc[(df['P1']==0),'P1'] = np.NaN
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']>30) | (df['P1']<-30),'P1'].count()
+        df.loc[(df['P1']>30) | (df['P1']<-30),'P1'] = np.NaN
+        print(dfEdit.head(15))
+        # exit() 
         
     if '300234064739080' in bid:  # 2017 W6 
         #True Temperature = reported value - maximum allowed value - minimum allowed value  Wrapped Temps
         maxValue = 36
         minValue = -5
         df.loc[(df['T0']>10) & ((df['Dates']< dt.datetime(2017,5,25)) | (df['Dates']>dt.datetime(2017,12,1))),'T0'] -= (maxValue - minValue)
-       # # remove erroneous
-       # df.loc[(df['Dates']<dt.datetime(2017,11,25)) & (df['T0']<-12),'T0'] = np.NaN
+        # unphysical
+        dfEdit.loc['UnphysicalValues',tcols] += df.loc[(df['Dates']<dt.datetime(2017,3,9,6,0,0)),tcols].count()
         df.loc[(df['Dates']<dt.datetime(2017,3,9,6,0,0)),tcols] = np.nan
         df.loc[(df['Dates']<dt.datetime(2017,3,9,4,0,0)),'S0'] = np.nan
         df.loc[(df['Dates']>dt.datetime(2017,3,11)) & 
                (df['Dates']<dt.datetime(2017,3,12)) &
                (df['S0']<27.4),'S0'] = np.nan
 
-    if '300234067936870' in bid:  # 2019 W-9
+    if '300234067936870' in bid:  # 2019 W9
+        print(dfEdit.head(15))
+        # remove initial adjustment 
+        dfEdit.loc['InitialAdjustment',dfEdit.columns != 'GPSquality'] += len(df.loc[(df['Dates']<dt.datetime(2019,4,2,0,0,0))])
         df = df.loc[(df['Dates']>=dt.datetime(2019,4,2,0,0,0))]
         df.reset_index(drop=True,inplace=True)
-        df.loc[(df['P1']< 8),'P1'] = np.nan
-        # print(df['T0'].max())
-        # print(df['T0'].min())
+        
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # unwrap temperatures
         maxValue = 36
         minValue = -5
+        dfEdit.loc['WrappedTemperatures','T0'] = df.loc[(df['T0']>14),'T0'].count()
         df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
+        # unphysical values
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['Dates']>dt.datetime(2019,4,30)) & (df['T0']<-20),'T0'].count()
         df.loc[(df['Dates']>dt.datetime(2019,4,30)) & (df['T0']<-20),'T0'] = np.nan
-        # we need to find pdepths for this buoy. It's NOT 10dbar
+        # # we need to find pdepths for this buoy. It's NOT 10dbar
+        print(dfEdit.head(15))
+        # exit()
 
-    if '300234060320940' in bid:  # 2019 05
-        for pcol in pcols:
-            df.loc[(df[pcol]<0),pcol] = np.nan
-        df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
-        for tcol in tcols:
-            df.loc[:,tcol] += 0.2
-    
-    if '300234060320930' in bid:  # 2019 04
-        df.loc[(df['P1']<14)] = np.nan
-        df = df.loc[(df['Dates']<=dt.datetime(2020,8,1))]
-        for tcol in tcols:
-            df.loc[:,tcol] += 0.2
+    if '300234068514830' in bid:  # 2019 01
+        # no initial adjustment needed
+         
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>73.62) & (df['Lat']<73.63) & (df['Lon']>155.13) & (df['Lon']<155.14),'Lat'].count()
+        df.loc[(df['Lat']>73.62) & (df['Lat']<73.63) & (df['Lon']>155.13) & (df['Lon']<155.14),:] = np.nan
 
-    if '300234068719480' in bid:  # 2019 03
-        for pcol in pcols:
-            df.loc[(df[pcol]<0),pcol] = np.nan
-            
+        # correct wrapped temps
+        maxValue = df['T0'].max()
+        minValue = df['T0'].min()
+        dfEdit.loc['WrappedTemperatures','T0'] += df.loc[(df['T0']>14),'T0'].count()
+        df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
+        
+        # unphysical values
+        for tcol in tcols[1:]:
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol].count()
+                df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol] = np.nan
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol].count()
+                df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol] = np.nan
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']==0.0),'P1'].count()        
+        df.loc[(df['P1']==0.0),'P1'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']>100),'P1'].count()        
+        df.loc[(df['P1']>100),'P1'] = np.nan 
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'].count()
+        df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'] = np.nan
+        print(dfEdit.head(15))
+         
     if '300234068519450' in bid:  # 2019 02
+        print(dfEdit.head(15))
+        dfEdit.loc['InitialAdjustment',dfEdit.columns != 'GPSquality'] += 1
         df = df.iloc[1:,:]  # drop first row
-        for pcol in pcols:
-            df.loc[(df[pcol]>80) | (df[pcol]<5),pcol] = np.nan
-        df.loc[(df['P2']>45),'P2'] = np.nan
-        for pcol in pcols[1:]:
-            df.loc[(df['Dates']>dt.datetime(2022,5,18)),pcol] = np.nan
+        df.reset_index(drop=True,inplace=True)
+                
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
         # T0 has wrapped values
         maxValue = df['T0'].max()
         minValue = df['T0'].min()
+        dfEdit.loc['WrappedTemperatures','T0'] += df.loc[(df['T0']>25),'T0'].count()
         df.loc[(df['T0']>25),'T0'] -= (maxValue - minValue)
-        # remove a couple T0 values just after break in data
-        for tcol in tcols:
-            df.loc[(df['Dates']>=dt.datetime(2020,7,28,0,0,0)) & (df['Dates']<dt.datetime(2020,7,28,11,0,0)),'tcol'] = np.nan
-        
-    if '300234068514830' in bid:  # 2019 01
-        # print(df['T0'].max())
-        # print(df['T0'].min())
-        maxValue = df['T0'].max()
-        minValue = df['T0'].min()
-        df.loc[(df['T0']>14),'T0'] -= (maxValue - minValue)
-        for tcol in tcols:
-            if tcol != 'T0':
-                df.loc[(df['Dates']>dt.datetime(2020,10,30)),tcol] = np.nan
-                df.loc[(df['Dates']>dt.datetime(2020,10,17)) & (df[tcol]>2),tcol] = np.nan
-        df.loc[(df['P1']==0.0),'P1'] = np.nan
-        df.loc[(df['P1']>100),'P1'] = np.nan 
-        df.loc[(df['Dates']>dt.datetime(2020,11,5)),'P1'] = np.nan
-         
-    if '300234061160500' in bid:  # 2020 01
-        # invalidate bad pressures
+
+        # unphysical values
         for pcol in pcols:
+            dfEdit.loc['ConstantValue',pcol] += df.loc[(df[pcol]==0),pcol].count()
+            df.loc[(df[pcol]==0),pcol] = np.nan
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df[pcol]>80),pcol].count()
+            df.loc[(df[pcol]>80),pcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P2'] += df.loc[(df['P2']>45),'P2'].count()
+        df.loc[(df['P2']>45),'P2'] = np.nan        
+        for pcol in pcols[1:]:
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df['Dates']>dt.datetime(2022,5,18)),pcol].count() # counts non-Nan
+            df.loc[(df['Dates']>dt.datetime(2022,5,18)),pcol] = np.nan
+
+        print(dfEdit.head(15))
+        # exit()
+        
+    if '300234068719480' in bid:  # 2019 03
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+                
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # pressures
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']==-99.9),'P1'].count()
+        df.loc[(df['P1']==-99.9),'P1'] = np.nan
+        print(dfEdit.head(15))
+            
+    if '300234060320930' in bid:  # 2019 04
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+                
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # reminder: lon/lat are not from this buoy, these locations jump around
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Dates']>dt.datetime(2020,8,1)),'Dates'].count()
+        df = df.loc[(df['Dates']<=dt.datetime(2020,8,1))]
+        # this bias is stateed under "Sensor Bias" in the L2 header
+        for tcol in tcols:
+            df.loc[:,tcol] += 0.2
+
+    if '300234060320940' in bid:  # 2019 05
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+                
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # unphysical values
+        for pcol in pcols:
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df[pcol]<0),pcol].count()
             df.loc[(df[pcol]<0),pcol] = np.nan
+        df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
+        # this bias is stateed under "Sensor Bias" in the L2 header
+        for ii,tcol in enumerate(tcols):
+            df.loc[:,tcol] += 0.2
+            if ii>0:
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df[tcol]<-1.9),tcol].count()
+                df.loc[(df[tcol]<-1.9),tcol] = np.nan           
+        print(dfEdit.head(15))
+        # exit()
+        
+    if '300234061160500' in bid:  # 2020 01
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+                
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # count and invalidate unphysical pressures
+        for pcol in pcols:
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df[pcol]<0),pcol].count()
+            df.loc[(df[pcol]<0),pcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']>25) | (df['P1']<5),'P1'].count()  
         df.loc[(df['P1']>25) | (df['P1']<5),'P1'] = np.nan  
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['Dates']>dt.datetime(2021,1,12)) & (df['Dates']<dt.datetime(2021,1,19,6,0,0)),'P1'].count()
         df.loc[(df['Dates']>dt.datetime(2021,1,12)) & (df['Dates']<dt.datetime(2021,1,19,6,0,0)),'P1'] = np.nan
         # remove Ta if data are all the same value
         # ta = df['Ta'].to_numpy()
         # if (ta[0] == ta).all():
-        #     df.drop(columns=['Ta'],inplace=True)          
+        #     df.drop(columns=['Ta'],inplace=True)   
+        
         # remove Dest columns as they don't tell us much.
         df.drop(df.columns[df.columns.str.startswith('Dest')],axis=1,inplace=True)
         # invalidate low, constant temps
-        for tcol in tcols:
-           df.loc[(df[tcol]<=-20),tcol] = np.nan
-           
+        for ii,tcol in enumerate(tcols):
+            dfEdit.loc['ConstantValue',tcol] += df.loc[(df[tcol]<=-20),tcol].count()
+            df.loc[(df[tcol]<=-20),tcol] = np.nan
+            if ii>0:
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df[tcol]<-1.9),tcol].count()
+                df.loc[(df[tcol]<-1.9),tcol] = np.nan           
+        print(dfEdit.head(15))
+        # exit()
+        
     if '300534060649670' in bid:  # 2021 01
-        # since these data were re-downloaded to get GPSquality, we cull data after 'deceased' date
-        df.loc[(df['Dates']>dt.datetime(2022,2,27)),:] = np.nan
-        
-        # print(df.head())
-        # dfCulledStats['BadLocation'] = len(df.loc[(df['GPSquality']<3),'Lat'])
-        # print(dfCulledStats.head())
-        df.loc[(df['GPSquality']<3),:] = np.nan
-        
-        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==12) & (df['Lat']<60),'Lat'])
-        # print(dfCulledStats.head())
-        df.loc[(df['Month']==12) & (df['Lat']<60),:] = np.nan
-        
-        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==9) & (df['Lat']>73.1),'Lat'])
-        # print(dfCulledStats.head())
-        df.loc[(df['Month']==9) & (df['Lat']>73.1),:] = np.nan
-        
-        # dfCulledStats['BadLocation'] += len(df.loc[( (df['Month']==12) | (df['Month']==1) ) & (df['Lat']<69.2),'Lat'])
-        # print(dfCulledStats.head())
-        df.loc[( (df['Month']==12) | (df['Month']==1) ) & (df['Lat']<69.2),:] = np.nan
-        
-        # dfCulledStats['BadLocation'] += len(df.loc[(df['Month']==1) & (df['Lat']>69.81),'Lat'])
-        # print(dfCulledStats.head())
-        df.loc[(df['Month']==1) & (df['Lat']>69.81),:] = np.nan
-        # exit(-1)
-        
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+    
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan  
+        print(dfEdit.head(15))
+        # # unexplained wacky location
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>73.1) & (df['Lat']<73.2) & (df['Lon']>-150.7) & (df['Lon']<-150.6),'Lat'].count()
+        df.loc[(df['Lat']>73.1) & (df['Lat']<73.2) & (df['Lon']>-150.7) & (df['Lon']<-150.6),:] = np.nan
+        # this plot shows there are not nec'ly jumps in locs, but GPS<3 creates gaps.
+        # fig,ax = plt.subplots(1,1,figsize=(20,8))
+        # ax.plot(df['Dates'],df['Lat'],'.-')
+        # plt.show()
+        # exit()
+                
+        # pressures
+        for pcol in pcols:
+            dfEdit.loc['ConstantValue',pcol] += df.loc[(df[pcol]==0),pcol].count()
+            df.loc[(df[pcol]==0),pcol] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P2'] += df.loc[(df['Dates']>dt.datetime(2021,8,31)),'P2'].count()
         df.loc[(df['Dates']>dt.datetime(2021,8,31)),'P2'] = np.nan
+        # temperatures
+        dfEdit.loc['OtherUnphysicalValues','T0'] += 1
         df['T0'].iloc[0] = np.nan
         # 10m T and S are bad, but we want to keep the columns
+        dfEdit.loc['OtherUnphysicalValues','T4'] += df['T4'].count()
         df['T4'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','S1'] += df['S1'].count()        
         df['S1'] = np.nan
+        print(dfEdit.head(15))
+        # exit()
         
     if '300534060251600' in bid:  # 2021 02
-        # last loc looks bad, jumps too far in 1 hour even tho' GPSq=3
-        df.loc[(df['Dates']>=dt.datetime(2021,12,23,17,0,0)),:] = np.nan
-        # print(df['T0'].max())
-        # print(df['T0'].min())
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan          
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>=dt.datetime(2021,12,23))].count() # these still need to be removed even tho' GPS=3
+        df.loc[(df['Dates']>=dt.datetime(2021,12,23)),:] = np.nan
+        print(dfEdit.head(15))
+
+        # unwrap temps (T0)
+        dfEdit.loc['WrappedTemperatures','T0'] += df.loc[(df['T0']>20),'T0'].count()
         df.loc[(df['T0']>20),'T0'] -= (df['T0'].max() - df['T0'].min())
+        
+        # temperatures
+        dfEdit.loc['OtherUnphysicalValues','T0'] += 1
         df['T0'].iloc[0] = np.nan
+        # pressures
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']<7.5),'P1'].count()
         df.loc[(df['P1']<7.5),'P1'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P2'] += df.loc[(df['P2']<15),'P2'].count()
         df.loc[(df['P2']<15),'P2'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P3'] += df.loc[(df['P3']<30),'P3'].count()
         df.loc[(df['P3']<30),'P3'] = np.nan
+        print(dfEdit.head(15))
+        # exit()
         
     if '300534060051570' in bid:  # 2021 03
-        df.loc[(df['Lat']<71),:] = np.nan  
-        df.loc[(df['P1']<10),'P1'] = np.nan     
+        print(dfEdit.head(15))
+        dfEdit.loc['InitialAdjustment',:] += df.loc[df['Dates']<dt.datetime(2021,9,30),'Dates'].count()
+        df = df.loc[(df['Dates']>=dt.datetime(2021,9,30)),:]
+        df.reset_index(drop=True,inplace=True)
+        print(dfEdit.head(15))
+
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         
-    if '300534062158480' in bid:  # 2021 04
-        df.loc[(df['T0']<-10),'T0'] = np.nan  
-        df.loc[(df['S0']<25),'S0'] = np.nan      
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan          
+        print(dfEdit.head(15))
+        # exit()
+        
+    if '300534062158480' in bid:  # 2021 04    No GPSquality
+        print(dfEdit.head(15))
+        dfEdit.loc['InitialAdjustment',dfEdit.columns != 'GPSquality'] += 1
+        df = df.iloc[1:,:]  # drop first row
+        df.reset_index(drop=True,inplace=True)
 
-    if '300534062158460' in bid:  # 2021 05
-        df.loc[(df['T0']<-10),'T0'] = np.nan  
-        df.loc[(df['S0']<25),'S0'] = np.nan      
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
 
-    if '300534062898720' in bid: # 2022 01     BadLocation, Unphysical, ConstantValue, allBad, SUBoutofrange
+        # GPSquality not available for this buoy
+        # unphysical values
+        dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['S0']<25),'S0'].count()
+        df.loc[(df['S0']<25),'S0'] = np.nan      
+        print(dfEdit.head(15))
+
+    if '300534062158460' in bid:  # 2021 05    No GPSquality
+        print(dfEdit.head(15))
+        dfEdit.loc['InitialAdjustment',dfEdit.columns != 'GPSquality'] += 1
+        df = df.iloc[1:,:]  # drop first row
+        df.reset_index(drop=True,inplace=True)
+
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+
+        # GPSquality not available for this buoy
+        # salinities
+        dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['Dates']>dt.datetime(2021,11,6)) & (df['Dates']<dt.datetime(2021,11,7)) & (df['S0']<35),'S0'].count()
+        df.loc[(df['Dates']>dt.datetime(2021,11,6)) & (df['Dates']<dt.datetime(2021,11,7)) & (df['S0']<35),'S0'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['Dates']>dt.datetime(2021,11,8,16,0,0)) & (df['Dates']<dt.datetime(2021,11,8,20,0,0)) & (df['S0']<35.1),'S0'].count()
+        df.loc[(df['Dates']>dt.datetime(2021,11,8,16,0,0)) & (df['Dates']<dt.datetime(2021,11,8,20,0,0)) & (df['S0']<35.1),'S0'] = np.nan
+        print(dfEdit.head(15))
+
+    if '300534062898720' in bid: # 2022 01     BuoyLocationsFlagged, UnphysicalValues
         # don't include data before buoy goes in water
-        dfEdit.loc['BeforeDeploy',:] += len(df.loc[(df['Dates']<dt.datetime(2022,9,9,4,0,0)),'Dates'])
+        print(dfEdit.head(15))
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<dt.datetime(2022,9,9,4,0,0)),'Dates'].count()
         df = df.loc[(df['Dates']>=dt.datetime(2022,9,9,4,0,0)),:] 
         df=df.reset_index(drop=True)
         
-        # bad?, disjointed in time, at end of time series
-        dfEdit.loc['Miscellaneous',:] += len(df.loc[(df['Dates']>=dt.datetime(2023,2,23)) & (df['Dates']<dt.datetime(2023,3,4)),'Dates'])
-        df.loc[(df['Dates']>=dt.datetime(2023,2,23)) & (df['Dates']<dt.datetime(2023,3,4)),:] = np.nan
-        df.dropna(axis=0,how='all',inplace=True)
-        df.reset_index(drop=True,inplace=True)
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        # BuoyLocationsFlagged
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),'GPSquality'] = np.nan
+        # bad?, two points disjointed in time, at end of time series
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>=dt.datetime(2023,2,23)),'Dates'].count()
+        df.loc[(df['Dates']>=dt.datetime(2023,2,23)),:] = np.nan
+        
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>85) | (df['Lat']<70),'Lat'].count()
+        df.loc[(df['Lat']>85) | (df['Lat']<70),:] = np.nan
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lon']>-100),'Lon'].count()
+        df.loc[(df['Lon']>-100),:] = np.nan
 
-
-        # BadLocation
-        dfEdit.loc['BadLocation',:] += len(df.loc[(df['Lat']>72.56) & (df['Lat']<72.57) & (df['Lon']>-154.78) & (df['Lon']<-154.77),'Lat'])
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>72.56) & (df['Lat']<72.57) & (df['Lon']>-154.78) & (df['Lon']<-154.77),'Lat'].count()
         df.loc[(df['Lat']>72.56) & (df['Lat']<72.57) & (df['Lon']>-154.78) & (df['Lon']<-154.77),:] = np.nan
-        df.dropna(axis=0,how='all',inplace=True)
-        df.reset_index(drop=True,inplace=True)
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>72.02) & (df['Lat']<72.03) & (df['Lon']>-152.81) & (df['Lon']<-152.80),'Lat'].count()
+        df.loc[(df['Lat']>72.02) & (df['Lat']<72.03) & (df['Lon']>-152.81) & (df['Lon']<-152.80),:] = np.nan
 
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>74.80) & (df['Lat']<74.85) & (df['Lon']>-163.70) & (df['Lon']<-163.65),'Lat'].count()
+        df.loc[(df['Lat']>74.80) & (df['Lat']<74.85) & (df['Lon']>-163.70) & (df['Lon']<-163.65),:] = np.nan
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>72.474) & (df['Lat']<72.476) & (df['Lon']>-154.739) & (df['Lon']<-154.738),'Lat'].count()
+        df.loc[(df['Lat']>72.474) & (df['Lat']<72.476) & (df['Lon']>-154.739) & (df['Lon']<-154.738),:] = np.nan
+        
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
+                                                       (df['Lat']>75.09) & (df['Lat']<75.10) &
+                                                       (df['Lon']>-163.026) & (df['Lon']<-163.024),'Lat'].count()
+        df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
+                                                       (df['Lat']>75.09) & (df['Lat']<75.10) &
+                                                       (df['Lon']>-163.026) & (df['Lon']<-163.024),:] = np.nan
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
+                                                       (df['Lat']>75.07) & (df['Lat']<75.08) &
+                                                       (df['Lon']>-163.008) & (df['Lon']<-163.006),'Lat'].count()
+        df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
+                                                       (df['Lat']>75.07) & (df['Lat']<75.08) &
+                                                       (df['Lon']>-163.008) & (df['Lon']<-163.006),:] = np.nan
+        print(dfEdit.head(15))
+       
         # pressures
-        dfEdit.loc['Unphysical','P1'] += len(df.loc[(df['P1']>20) | (df['P1']<1),'P1'])
-        df.loc[(df['P1']>20) | (df['P1']<1),'P1'] = np.nan
+        dfEdit.loc['ConstantValue','P1'] += len(df.loc[(df['P1']>20),'P1'])
+        df.loc[(df['P1']>20),'P1'] = np.nan
 
-        # temperatures
-        dfEdit.loc['Unphysical','T0'] += len(df.loc[(df['Dates']>dt.datetime(2022,10,20)) & (df['T0']<-2),'T0'])
-        df.loc[(df['Dates']>dt.datetime(2022,10,20)) & (df['T0']<-2),'T0'] = np.nan  # Unphysical
+        # # temperatures
+        dfEdit.loc['OtherUnphysicalValues','T0'] += len(df.loc[(df['Dates']>dt.datetime(2022,10,20)) & (df['T0']<-2),'T0'])
+        df.loc[(df['Dates']>dt.datetime(2022,10,20)) & (df['T0']<-2),'T0'] = np.nan  # UnphysicalValues
 
         for ii,tcol in enumerate(tcols):
             dfEdit.loc['ConstantValue',tcol] += len(df.loc[(df[tcol]==0.0) | (df[tcol]==-0.0001),tcol])
             df.loc[(df[tcol]==0.0) | (df[tcol]==-0.0001),tcol] = np.nan
 
-            dfEdit.loc['Unphysical',tcol] += len(df.loc[(df[tcol]>4),tcol])
-            df.loc[(df[tcol]>4),tcol] = np.nan
-        # major decrease, leave for now.
-        # df.loc[(df['Dates']>dt.datetime(2022,10,22,11,0,0)) & (df['Dates']<dt.datetime(2022,10,26)),scols] = np.nan
+        # # salinities
+        # # major decrease, leave for now.
+        # # df.loc[(df['Dates']>dt.datetime(2022,10,22,11,0,0)) & (df['Dates']<dt.datetime(2022,10,26)),scols] = np.nan
         for scol in scols:
             dfEdit.loc['ConstantValue',scol] += len(df.loc[(df[scol]==0.0) | (df[scol]==159.9323),scol])
             df.loc[(df[scol]==0.0) | (df[scol]==159.9323),scol] = np.nan
+        print(dfEdit.head(15))
             
-            dfEdit.loc['Unphysical',scol] += len(df.loc[(df[scol]<10),scol])
-            df.loc[(df[scol]<10),scol] = np.nan
-
     if '300534062897730' in bid: # 2022 02        
+        print(dfEdit.head(15))
         # don't include data before buoy goes in water
+        dfEdit.loc['InitialAdjustment',:] += len(df.loc[(df['Dates']<dt.datetime(2022,9,9,16,0,0)),'Dates'])
         df = df.loc[(df['Dates']>dt.datetime(2022,9,9,16,0,0)),:] 
         df.reset_index(drop=True,inplace=True)
+               
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+ 
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),'GPSquality'] = np.nan
+        print(dfEdit.head(15))
+
         # wrapped T1 temps
         df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
         # invalidate salinities after max salinity, NOT YET
         # imax = df['S0'].idxmax()
         # df['S0'].iloc[imax+1:] = np.nan
-        df.loc[(df['S0']<1),'S0'] = np.nan
+        print(dfEdit.head(15))
 
     if '300534063704980' in bid: # 2022 03 
+        # no initial adjustment needed
+        print(dfEdit.head(15))
+        
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),'GPSquality'] = np.nan
+        print(dfEdit.head(15))
+
+        # P5 pressures getting shallower for some reason, ending in constant value 
+        dfEdit.loc['ConstantValue','P5'] += df.loc[(df['P5']==-10.13),'P5'].count()
+        df.loc[(df['P5']==-10.13),'P5'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P5'] += df.loc[(df['Dates']>dt.datetime(2022,10,4)),'P5'].count()
         df.loc[(df['Dates']>dt.datetime(2022,10,4)),'P5'] = np.nan
+       
+        # unexplained offset in P1. Let interpolation fill the depths.
+        dfEdit.loc['OtherUnphysicalValues','P1'] += len(df.loc[(df['Dates']>dt.datetime(2022,10,18,15,0,0)) & (df['Dates']<dt.datetime(2022,10,22)),'P1'])
         df.loc[(df['Dates']>dt.datetime(2022,10,18,15,0,0)) & (df['Dates']<dt.datetime(2022,10,22)),'P1'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']>12),'P1'].count()
         df.loc[(df['P1']>12),'P1'] = np.nan
+        # temperatures
+        dfEdit.loc['ConstantValue','T0'] += df.loc[(df['T0']==-0.01),'T0'].count()
         df.loc[(df['T0']==-0.01),'T0'] = np.nan
+        print(dfEdit.head(15))
      
     if '300534063807110' in bid: # 2022 04  
         # don't include data before buoy goes in water
+        dfEdit.loc['InitialAdjustment',:] += len(df.loc[(df['Dates']<dt.datetime(2022,9,11,17,50,0)),'Dates'])
         df = df.loc[(df['Dates']>=dt.datetime(2022,9,11,17,50,0)),:] 
         df.reset_index(drop=True,inplace=True)
-        df.loc[(df['P1']>15),'P1'] = np.nan     
+
+        dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        # check for bad buoy locations
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        print(dfEdit.head(15))
+
+        # pressures
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']>15) | (df['P1']==0),'P1'].count()       
+        df.loc[(df['P1']>15) | (df['P1']==0),'P1'] = np.nan 
+        # temperatures
         for tcol in tcols:
-            df.loc[(df[tcol]==0.0),tcol] = np.nan
-            df.loc[(df[tcol]==-0.0001),tcol] = np.nan
+            dfEdit.loc['ConstantValue',tcol] += len(df.loc[(df[tcol]==0.0) | (df[tcol]==-0.0001),tcol])
+            df.loc[(df[tcol]==0.0) | (df[tcol]==-0.0001),tcol] = np.nan
+        # salinities
         for scol in scols:
-            df.loc[(df[scol]>150),scol] = np.nan
-            df.loc[(df[scol]<12),scol] = np.nan
+            dfEdit.loc['ConstantValue',scol] += len(df.loc[(df[scol]>150) | (df[scol]<12),scol])
+            df.loc[(df[scol]>150) | (df[scol]<12),scol] = np.nan
+            
         # invalidate salinities after max salinity, NOT YET
         # imax = df['S0'].idxmax()
         # df['S0'].iloc[imax+1:] = np.nan
  
     if '300534063803100' in bid: # 2022 05
+        # don't include data before buoy goes in water
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<=dt.datetime(2022,9,13,18,30,0)),'Dates'].count()
         df = df.loc[(df['Dates']>dt.datetime(2022,9,13,18,30,0)),:]
         df.reset_index(drop=True,inplace=True)
+
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        # check for bad buoy locations
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        print(dfEdit.head(15))
+        
+        # pressures
         for pcol in pcols:
-            df.loc[(df[pcol]<2),pcol] = np.nan
-            df.loc[(df[pcol]>70),pcol] = np.nan
+            dfEdit.loc['OtherUnphysicalValues',pcol] += df.loc[(df[pcol]<2) | (df[pcol]>70),pcol].count()       
+            df.loc[(df[pcol]<2) | (df[pcol]>70),pcol] = np.nan
+        # temperatures
         for tcol in tcols:
-           df.loc[(df[tcol]>30),tcol] = np.nan
-           df.loc[(df[tcol]<-10),tcol] = np.nan
+            dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df[tcol]<-10) | (df[tcol]>30),tcol].count()
+            df.loc[(df[tcol]<-10) | (df[tcol]>30),tcol] = np.nan
+        # salinities
         for scol in scols:
-           df.loc[(df[scol]<20),scol] = np.nan
+            dfEdit.loc['OtherUnphysicalValues',scol] += df.loc[(df[scol]<20),scol].count()
+            print(df.loc[(df[scol]<20),scol].count())
+            df.loc[(df[scol]<20),scol] = np.nan
+        print(dfEdit.head(15))
+        # exit()
     
     if '300534062892700' in bid: # 2022 06
+        # don't include data before buoy goes in water
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<=dt.datetime(2022,9,15,22,30,0)),'Dates'].count()
         df = df.loc[(df['Dates']>dt.datetime(2022,9,15,22,30,0)),:]
         df.reset_index(drop=True,inplace=True)
+
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        print(dfEdit.head(15))
+        
+        # bad buoy locations
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan
+
+        # temperatures        
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['T0']<-1.9),'T0'].count()  # lone point
         df.loc[(df['T0']<-1.9),'T0'] = np.nan
+        dfEdit.loc['ConstantValue','T1'] += df.loc[(df['T1']==0),'T1'].count()
         df.loc[(df['T1']==0),'T1'] = np.nan
+        # salinities
+        dfEdit.loc['ConstantValue','S0'] += df.loc[(df['S0']==0),'S0'].count()
+        df.loc[(df['S0']==0),'S0'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['S0']<20),'S0'].count()
         df.loc[(df['S0']<20),'S0'] = np.nan
+        print(dfEdit.head(15))
+        # exit()
         
     if '300534062894700' in bid: # 2022 07
         df = df.loc[(df['Dates']>dt.datetime(2022,9,17,17,0,0)),:]
@@ -610,11 +927,6 @@ def getL1(filename, bid, figspath=None):
         df.loc[(df['S5']<29.4),'S5'] = np.nan
         df.loc[(df['S5']<31.4) & (df['Dates']>dt.datetime(2022,10,30)) & (df['Dates']<dt.datetime(2022,12,1)),'S5'] = np.nan
         
-    #         # invalidate salinities after max salinity
-    #         imax = df['S0'].idxmax()
-    #         df['S0'].iloc[imax+1:] = np.nan
-    #             # df.loc[(df['S0']<1),'S0'] = np.nan
-    # #             df.loc[(df['Dates']<dt.datetime(2022,12,15)) & (df[scol]<20),scol] = np.nan
         # intersection of T, S depths
         tsINTdepths = [de for de in sdepths if de in tdepths]
         # indices of intersection
@@ -629,36 +941,58 @@ def getL1(filename, bid, figspath=None):
                 df.loc[((df[tcols[indt]]<-1.5) | (df[tcols[indt]]>-1.24)) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[tcols[indt],scols[inds]]] = np.nan
                 df.loc[(df[scols[inds]]<33) & (df['Dates']>dt.datetime(2023,4,1)) & (df['Dates']<dt.datetime(2023,5,1)),[scols[inds]]] = np.nan  #tcols[indt],
                 
-        # df = removeSspikes(bid,df,sdepths,figspath)
-
-        # fig78,ax78 = plt.subplots(len(tsINTdepths),1,figsize=(10,10),sharex=True)
-        # for ii, (inds,indt) in enumerate(zip(indS,indT)): 
-        #     ax78[ii].plot(df['Dates'],df[tcols[indt]],'.',ms=3)
-        #     secax=ax78[ii].twinx()
-        #     secax.plot(df['Dates'],df[scols[inds]],'r.',ms=3)
-        #     ax78[ii].set_title(f'{tcols[indt]} (b) and {scols[inds]} (r) at {sdepths[inds]}m')
-        # plt.savefig(f'{figspath}/TandS_SBEcorr.png')
-        # plt.show()
-        # exit(-1)
                 
     if '300534062894730' in bid: # 2022 10
+        # don't include data before buoy goes in water
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<dt.datetime(2022,9,25,17,10,0)),'Dates'].count()
         df = df.loc[(df['Dates']>=dt.datetime(2022,9,25,17,10,0)),:]
         df.reset_index(drop=True,inplace=True)
-        df.loc[(df['P1']>60) | (df['P1']<0),'P1'] = np.nan
-        df.loc[(df['T1']<-10),'T1'] = np.nan
-        df.loc[(df['T1']>20),'T1'] -= (df['T1'].max() - df['T1'].min())
-        df.loc[(df['T0']==-0.01),'T0'] = np.nan
-        df.loc[(df['Dates']>dt.datetime(2022,10,27,4,0,0)),'T1'] = np.nan
-        df.loc[(df['S0']<10),'S0'] = np.nan
+        
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        # bad buoy locations
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        print(dfEdit.head(15))
+        
         # remove whacky locations, even tho' GPSQuality = 3
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[( (df['Lon'].diff().abs()>0.005) | (df['Lat'].diff().abs()>0.002) ) & (df['Dates']<dt.datetime(2022,10,2)),'Lat'].count()
         df.loc[( (df['Lon'].diff().abs()>0.005) | (df['Lat'].diff().abs()>0.002) ) & (df['Dates']<dt.datetime(2022,10,2)),:] = np.nan
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lon']>-150.421) & (df['Lon']<-150.420) & (df['Lat']>73.00) & (df['Lat']<73.02),'Lat'].count()
         df.loc[(df['Lon']>-150.421) & (df['Lon']<-150.420) & (df['Lat']>73.00) & (df['Lat']<73.02),:] = np.nan
+
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lon']>-151.77) & (df['Lon']<-151.76) & (df['Lat']>73.167) & (df['Lat']<73.168),'Lat'].count()
+        df.loc[(df['Lon']>-151.77) & (df['Lon']<-151.76) & (df['Lat']>73.167) & (df['Lat']<73.168),:] = np.nan
+
+        # pressures
+        dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']>60),'P1'].count()
+        df.loc[(df['P1']>60),'P1'] = np.nan
+        dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']<0),'P1'].count()
+        df.loc[(df['P1']<0),'P1'] = np.nan
+        # temperatures
+        dfEdit.loc['OtherUnphysicalValues','T1'] += df.loc[(df['T1']<-10),'T1'].count()
+        df.loc[(df['T1']<-10),'T1'] = np.nan
+        dfEdit.loc['ConstantValue','T0'] += df.loc[(df['T0']==-0.01),'T0'].count()
+        df.loc[(df['T0']==-0.01),'T0'] = np.nan
+        # # salinities
+        dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['S0']<10),'S0'].count()
+        df.loc[(df['S0']<10),'S0'] = np.nan
         
     if '300534062893700' in bid: # 2022 11
         # remove rows before buoy in water, according to P and S values
+        dfEdit.loc['InitialAdjustment',:] += len(df.loc[(df['Dates']<dt.datetime(2022,9,25,20,30,0)),'Dates'])
         df = df.loc[(df['Dates']>=dt.datetime(2022,9,25,20,30,0)),:]
         df.reset_index(drop=True,inplace=True)
+        
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        
+        # bad buoy locations
+        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
+        df.loc[(df['GPSquality']<3),:] = np.nan
+        print(dfEdit.head(15))
+        
         # T0 has some unexplainable offset (to warmer temps)
+        dfEdit.loc['OtherUnphysicalValues','T0'] += len(df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'])
         df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'] = np.nan 
     
     if '300534062895730' in bid: # 2022 12
@@ -673,39 +1007,74 @@ def getL1(filename, bid, figspath=None):
         # exit(-1)
         
     if '300434064041440' in bid: # 2023 01
-        pass
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        df.drop(columns=['BATT'],inplace=True)  # these data aren't real
     if '300434064042420' in bid: # 2023 02
-        pass
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        df.drop(columns=['BATT'],inplace=True)  # these data aren't real
     if '300434064046720' in bid: # 2023 03
-        pass
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        df.drop(columns=['BATT'],inplace=True)  # these data aren't real
     if '300434064042710' in bid: # 2023 04
-        pass
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        df.drop(columns=['BATT'],inplace=True)  # these data aren't real
+
     if '300534062891690' in bid: # 2023 05
         # don't include data before buoy goes in water
-        dfEdit.loc['BeforeDeploy',:] += len(df.loc[(df['Dates']<dt.datetime(2023,7,29,6,15,0)),'Dates'])
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<dt.datetime(2023,7,29,6,15,0)),'Dates'].count()
         df = df.loc[(df['Dates']>=dt.datetime(2023,7,29,6,15,0)),:] 
         df=df.reset_index(drop=True)
         
     if '300534062893740' in bid: # 2023 06
         # don't include data before buoy goes in water
-        dfEdit.loc['BeforeDeploy',:] += len(df.loc[(df['Dates']<dt.datetime(2023,7,29,11,15,0)),'Dates'])
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<dt.datetime(2023,7,29,11,15,0)),'Dates'].count()
         df = df.loc[(df['Dates']>=dt.datetime(2023,7,29,11,15,0)),:] 
         df=df.reset_index(drop=True)
 
     if '300534062895700' in bid: # 2023 07
         # don't include data before buoy goes in water
-        dfEdit.loc['BeforeDeploy',:] += len(df.loc[(df['Dates']<dt.datetime(2023,7,29,15,55,0)),'Dates'])
+        dfEdit.loc['InitialAdjustment',:] += df.loc[(df['Dates']<dt.datetime(2023,7,29,15,55,0)),'Dates'].count()
         df = df.loc[(df['Dates']>=dt.datetime(2023,7,29,15,55,0)),:] 
         df=df.reset_index(drop=True)
     
+    if '300534063449630' in bid: # 2023 08
+        df = df.loc[(df['Dates']>=dt.datetime(2023,9,16,20,35,0)),:] 
+
+    if '300434064040440' in bid: # 2023 09
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        print(dfEdit.head(15))
+
+    if '300434064048220' in bid: # 2023 10
+        pass
+
+    if '300434064044730' in bid: # 2023 11
+        pass
+
+    if '300434064045210' in bid: # 2023 12
+        pass
+
+    if '300534062897690' in bid: # 2023 13
+        pass
+
+##################
     # drop a column if all values are NaN
     if '300534060649670' not in bid:  # we want to keep 'T4' and 'S2' in 2019_05
         df.dropna(axis=1,how='all',inplace=True)
         
+    for tcol in tcols:  # warm temps: any > 20, winter months > 6
+        dfEdit.loc['TemperaturesTooWarm20',tcol] += df.loc[(df[tcol]>20),tcol].count()
+        df.loc[(df[tcol]>20),tcol] = np.nan  
+        if '300234067936870' not in bid:  # not 2019 W9, where the sensor is sitting on the ice until Jun 24, 2019
+            dfEdit.loc['TemperaturesTooWarmWinter',tcol] += df.loc[(df[tcol]>6) & ( (df['Dates'].dt.month>=10) | (df['Dates'].dt.month<=5) ),tcol].count()
+            df.loc[(df[tcol]>6) & ( (df['Dates'].dt.month>=10) | (df['Dates'].dt.month<=5) ),tcol] = np.nan
+            
+    print(dfEdit.head(15))
+    # exit()
     # drop a row if all values are NaN, reset index
     df.dropna(axis=0,how='all',inplace=True)
     df.reset_index(drop=True,inplace=True)
-    
+    print('line 921',len(df))
+    # exit()
     # fig,ax = plt.subplots(1,1,figsize=(12,6))
     # ch = ax.scatter(df['Lon'],df['Lat'],s=4,c=df['Day'],cmap='turbo')
     # fig.colorbar(ch,ax=ax)
@@ -739,7 +1108,6 @@ def getL1(filename, bid, figspath=None):
     if 'SUB' in df.columns:
         if df.loc[(df['SUB']!=-999),'SUB'].max() <=1:  # check if range is 0-1, if so covert to %
             df['SUB'] *= 100.
-        dfEdit.loc['SUBoutofrange','SUB'] = len([(df['SUB']<0.) | (df['SUB']>100.),'SUB'])
         df.loc[(df['SUB']<0.) | (df['SUB']>100.),'SUB'] = np.NaN 
 
     if bid in '300234067936870':  # 2019 W9 changed May 2023 to reflect pressure data beginning of time series. Not sure what is going on.
@@ -752,7 +1120,6 @@ def getL1(filename, bid, figspath=None):
     print()
 
     plotL1 = input('Do you want to plot L1 data to check ranges? : y for Yes, n for No ')
-    binf = BM.BuoyMaster(bid)
 
     remcols = []
     if plotL1.startswith('y'):
@@ -775,7 +1142,7 @@ def getL1(filename, bid, figspath=None):
                 remcols.append(col)
             elif 'S0' in col:
                 for ii,scol in enumerate(scols):
-                    ax.plot(df['Dates'],df[scol],'*',color=colorList[ii],ms=1)
+                    ax.plot(df['Dates'],df[scol],'*',color=colorList[ii],ms=3)
             elif 'T0' in col:
             # elif col.startswith('T'):                
                 for ii,tcol in enumerate(tcols):
@@ -814,6 +1181,16 @@ def getL1(filename, bid, figspath=None):
             except:
                 plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{binf["name"][1]}_{col}.png')
             plt.show()
+            if 'Lat' in col:
+                fig1,ax1 = plt.subplots(1,1,figsize=(15,5))
+                ax1.plot(df['Dates'],df[col],'.')
+                ax1.grid()
+                ax1.set_title('Latitude with time to see gaps in GPSquality if there are any.')
+                try:
+                    plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{int(binf["name"][1]):02d}_{col}_withTime.png')
+                except:
+                    plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{binf["name"][1]}_{col}_withTime.png')
+                plt.show()
 
     for col in remcols:
         try:
@@ -824,6 +1201,9 @@ def getL1(filename, bid, figspath=None):
     if 'index' in df.columns:
         df.drop(columns=['index'],inplace=True)
     print('end of getL1 columns',df.columns)
+    
+    # if not Edit:
+    #     dfEdit = None
 
     return df,pdepths,tdepths,sdepths,ddepths,tiltdepths,dfEdit
 
@@ -1055,7 +1435,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     strdate = f'{int(byear)}{int(bmonth):02}{int(bday):02}'
     # print('strdate',strdate)
     objdate = dt.datetime.strptime(strdate,'%Y%m%d')
-    if objdate < dt.datetime(2023,1,1):  # g02202(climate data record)
+    if objdate < dt.datetime(2023,7,1):  # g02202(climate data record)
         icefile = f'{int(byear)}/seaice_conc_daily_nh_{strdate}_f17_v04r00.nc'
         ncdata=nc.Dataset(f'{icepath}/{icefile}')
         ice=np.squeeze(ncdata['cdr_seaice_conc'])
@@ -1122,6 +1502,9 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     bi2 = np.min((bi+trim,len(x)))
     bj1 = np.max((bj-trim,0))
     bj2 = np.min((bj+trim,len(y)))
+    # print(blon,blat,byear,bmonth,bday)
+    # print(bi1,bi2,bj1,bj2)
+    # print(ice.shape)
         
     ice200 = ice[:,np.arange(bi1,bi2)][np.arange(bj1,bj2),:]
     ice200wi = ice[:,np.arange(bi1,bi2)][np.arange(bj1,bj2),:]
@@ -1541,7 +1924,7 @@ def removePspikes(bid,df1,pdepths,figspath,brand='Pacific Gyre',dt1=None,dt2=Non
         ax[0].plot(df1['Dates'],df1['dPdh'],'r.-')
         ax[0].set_title(f'Pressure change in db/hr for {pcol}')
         ax[1].plot(df1['Dates'],-1*df1[pcol],'r.-')
-        dfEdit.loc['ReplacePressureSpikes',pcol] += len(df1.loc[(df1['dPdh'].abs()>spikeLimit[brand][limit]),pcol])
+        dfEdit.loc['PressureSpikesReplaced',pcol] += df1.loc[(df1['dPdh'].abs()>spikeLimit[brand][limit]),pcol].count()
         df1.loc[(df1['dPdh'].abs()>spikeLimit[brand][limit]),pcol] = np.nan
 
         ax[1].plot(df1['Dates'],-1*df1[pcol],'b.-')
@@ -1574,7 +1957,7 @@ def removeTspikes(bid,df1,tdepths,figspath,Dcols=None,sdepths=None,dfEdit=None):
     if sdepths is not None:
         Scols = [col for col in df1.columns if col.startswith('S') and not col.startswith('SUB')]
  
-    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
+    colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','gold','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 
     for ii,tcol in enumerate(Tcols):
         print(ii,tcol)
@@ -1717,7 +2100,7 @@ def removeTspikes(bid,df1,tdepths,figspath,Dcols=None,sdepths=None,dfEdit=None):
         try: 
             jj = sdepths.index(tdepths[ii])
             
-            dfEdit.loc['RemoveTemperatureSpikes',Scols[jj]] += len(df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
+            dfEdit.loc['TemperatureSpikesRemoved',Scols[jj]] += len(df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
                     ((df1[f'spike{col[0][1:]}'].abs()>1)) &
                     ((df1[col[0]]>df1[f'T{col[0][1:]}max']) | (df1[col[0]]<df1[f'T{col[0][1:]}min'])),Scols[jj]])
             df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
@@ -1727,7 +2110,7 @@ def removeTspikes(bid,df1,tdepths,figspath,Dcols=None,sdepths=None,dfEdit=None):
         except:
             print('that depth not in sdepths')
         # remove temp if spike is outside half of range and ( > max or < min)  
-        dfEdit.loc['RemoveTemperatureSpikes',col[0]] += len(df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
+        dfEdit.loc['TemperatureSpikesRemoved',col[0]] += len(df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &
                 ((df1[f'spike{col[0][1:]}'].abs()>1)) &
                 ((df1[col[0]]>df1[f'T{col[0][1:]}max']) | (df1[col[0]]<df1[f'T{col[0][1:]}min'])),col[0]])
         df1.loc[((df1[f'spike{col[0][1:]}']>df1[f'T{col[0][1:]}range'].div(2)) | (df1[f'spike{col[0][1:]}']<-1*df1[f'T{col[0][1:]}range'].div(2))) &

@@ -189,6 +189,154 @@ def BuoyMaster(bid):
                            'vbatt_ind':1,
                            'sub_ind':1,
                            'gps_ind':1},
+        
+        '300534063449630':{'notes':'UpTempO 2023 #8', # Salinity Ball
+                           'name':['2023','8'],           #  
+                           'imeiabbv':'449630',
+                           'wmo':'4802678',
+                           'deploymentDate':'09/16/2023',
+                           'deploymentLon':-143.072099,
+                           'deploymentLat':70.853401,
+                           'vessel':'Mirai',
+                           'brand':'Pacific Gyre',
+                           'pgname':'UW-IB-SVPS-0009',      # NOTE: UW-IB-SVPS-0008 next summer?
+                           'tdepths':[0.14],
+                           'tdepthsMadeBy':['PG'],
+                           'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
+                           'HULLtdepthsMadeBy':['S9'],
+                           'HULLsdepths':[0.38],          # hull
+                           'HULLsdepthsMadeBy':['S9'],
+                           'vbatt_ind':1,
+                           'sub_ind':1,
+                           'gps_ind':1},
+
+        '300434064040440':{'notes':'UpTempO 2023 #9', # Jim Thomson's microSWIFT, salinity ball type
+                        'name':['2023','9'],           #  
+                        'imeiabbv':'040440',
+                        'wmo':'NA',
+                        'deploymentDate':'09/21/2023',
+                        'deploymentLon':-157.2373, 
+                        'deploymentLat':71.2812,  
+                        'vessel':'NOAA Twin Otter',
+                        'brand':'University of Washington',
+                        'pgname':'microSWIFT-022',
+                        'tdepths':[0.5],         
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
+        
+        '300434064048220':{'notes':'UpTempO 2023 #10', # Jim Thomson's microSWIFT, salinity ball type
+                        'name':['2023','10'],           #  
+                        'imeiabbv':'048220',
+                        'wmo':'NA',
+                        'deploymentDate':'09/21/2023',
+                        'deploymentLon':-149.9744, 
+                        'deploymentLat':71.4873,  
+                        'vessel':'NOAA Twin Otter',
+                        'brand':'University of Washington',
+                        'pgname':'microSWIFT-038',
+                        'tdepths':[0.5],         
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
+        
+        '300434064044730':{'notes':'UpTempO 2023 #11', # Jim Thomson's microSWIFT, salinity ball type
+                        'name':['2023','11'],           #  
+                        'imeiabbv':'044730',
+                        'wmo':'NA',
+                        'deploymentDate':'09/21/2023',
+                        'deploymentLon':-150.0241, 
+                        'deploymentLat':71.9934,  
+                        'vessel':'NOAA Twin Otter',
+                        'brand':'University of Washington',
+                        'pgname':'microSWIFT-035',
+                        'tdepths':[0.5],         
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
+
+        '300434064045210':{'notes':'UpTempO 2023 #12', # Jim Thomson's microSWIFT, salinity ball type
+                        'name':['2023','12'],           #  
+                        'imeiabbv':'045210',
+                        'wmo':'NA',
+                        'deploymentDate':'09/21/2023',
+                        'deploymentLon':-149.9652, 
+                        'deploymentLat':70.9912,  
+                        'vessel':'NOAA Twin Otter',
+                        'brand':'University of Washington',
+                        'pgname':'microSWIFT-039',
+                        'tdepths':[0.5],         
+                        'sdepths':[0.5],
+                        'vbatt_ind':23},
+        
+        '300534062897690':{'notes':'UpTempO 2023 #13', # 60M One Wire 2022 Mike Steele #19.pdf, in newBuoys_2023
+                            'name':['2023','13'],           #  2023_One_Wire_T_Chain_Drifters_Data_Fields.xlsx
+                            'imeiabbv':'897690',
+                            'wmo':'4802672',                
+                            'deploymentDate':'10/20/2023',
+                            'deploymentLon':-149.96,
+                            'deploymentLat':71.99,
+                            'vessel':'SIZRS',
+                            'brand':'Pacific Gyre',
+                            'pgname':'UW-TC-1W-0019',       # NOTE UW-TC-1W-0017 bad deployment, destroyed
+                            'tdepths':[0,2.5,5.0,7.5,10,15,20,25,30,35,40,50,60],         
+                            'tdepthsMadeBy':['PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG'],
+                            'pdepths':[20,40,60],
+                            'pdepthsMadeBy':['PG','PG','PG'],
+                            'bp_ind':1,
+                            'vbatt_ind':1,
+                            'sub_ind':1,
+                            'gps_ind':1},
+        
+        # '300434064041420':{'notes':'UpTempO 2023 #b', # Jim Thomson's microSWIFT, salinity ball type
+        #                 'name':['2023','b'],           #  
+        #                 'imeiabbv':'041420',
+        #                 'wmo':'NA',
+        #                 'deploymentDate':'09/01/2023',
+        #                 'deploymentLon':'', 
+        #                 'deploymentLat':'',  
+        #                 'vessel':'NOAA Twin Otter',
+        #                 'brand':'University of Washington',
+        #                 'pgname':'microSWIFT-026',
+        #                 'tdepths':[0.5],         
+        #                 'sdepths':[0.5],
+        #                 'vbatt_ind':23},
+        
+        # '300434064049300':{'notes':'UpTempO 2023 #c', # Jim Thomson's microSWIFT, salinity ball type
+        #                 'name':['2023','c'],           #  
+        #                 'imeiabbv':'049300',
+        #                 'wmo':'NA',
+        #                 'deploymentDate':'09/01/2023',
+        #                 'deploymentLon':'', 
+        #                 'deploymentLat':'',  
+        #                 'vessel':'NOAA Twin Otter',
+        #                 'brand':'University of Washington',
+        #                 'pgname':'microSWIFT-027',
+        #                 'tdepths':[0.5],         
+        #                 'sdepths':[0.5],
+        #                 'vbatt_ind':23},
+        
+        
+        
+        # either h or i will be deployed, not both (supply chain woes)
+        '300534063446630':{'notes':'UpTempO 2023 #h', # Salinity Ball
+                           'name':['2023','h'],           #  
+                           'imeiabbv':'446630',
+                           'wmo':'4802677',
+                           'deploymentDate':'09/01/2023',
+                           'deploymentLon':'',
+                           'deploymentLat':'',
+                           'vessel':'Healy',
+                           'brand':'Pacific Gyre',
+                           'pgname':'UW-IB-SVPS-0008',
+                           'tdepths':[0.14],
+                           'tdepthsMadeBy':['PG'],
+                           'HULLtdepths':[0.44],     # SST 0.14, hull 0.44
+                           'HULLtdepthsMadeBy':['S9'],
+                           'HULLsdepths':[0.38],          # hull
+                           'HULLsdepthsMadeBy':['S9'],
+                           'vbatt_ind':1,
+                           'sub_ind':1,
+                           'gps_ind':1},
+
+        
         # '300434064606280':{'notes':'UpTempO 2023 #4', # Jim Thomson's microSWIFT, salinity ball type
         #                 'name':['2023','4'],           #  
         #                 'imeiabbv':'606280',
@@ -203,47 +351,6 @@ def BuoyMaster(bid):
         #                 'sdepths':[0.5],
         #                 'spddepths':[0.5],
         #                 'dirdepths':[0.5]},
-
-        # '300434064041420':{'notes':'UpTempO 2023 #7', # Jim Thomson's microSWIFT, salinity ball type
-        #                 'name':['2023','7'],           #  
-        #                 'imeiabbv':'041420',
-        #                 'wmo':'NA',
-        #                 'deploymentDate':'06/15/2023',
-        #                 'deploymentLon':-122.3216,  # PLACE HOLDER
-        #                 'deploymentLat':47.6552,  # PLACE HOLDER
-        #                 'vessel':'NOAA Twin Otter',
-        #                 'brand':'University of Washington',
-        #                 'pgname':'microSWIFT-026',
-        #                 'tdepths':[0.5],         
-        #                 'sdepths':[0.5],
-        #                 'spddepths':[0.5],
-        #                 'dirdepths':[0.5]},
-# deploy July - August
-
-# deploy August 16
-        # '300534062897690':{'notes':'UpTempO 2023 #11', # 60M One Wire 2022 Mike Steele #17.pdf
-        #                    'name':['2023','11'],           #  
-        #                    'imeiabbv':'897690',
-        #                    'wmo':'4802672',
-        #                    'deploymentDate':'08/16/2023',
-        #                    'deploymentLon':'',
-        #                    'deploymentLat':'',
-        #                    'vessel':'SIZRS',
-        #                    'brand':'Pacific Gyre',
-        #                    'pgname':'UW-TC-1W-0019',
-        #                    'tdepths':[0,2.5,5.0,7.5,10,15,20,25,30,35,40,50,60],         
-        #                    'tdepthsMadeBy':['PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG','PG'],
-        #                    'pdepths':[20,40,60],
-        #                    'pdepthsMadeBy':['PG','PG','PG'],
-        #                    'bp_ind':1,
-        #                    'vbatt_ind':1,
-        #                    'sub_ind':1,
-        #                    'gps_ind':1},
-
-# deploy Sept 11-20, six microSWIFTS
-# deploy Sept 17 deploy 2 salinity balls from ship Mirai
-# deploy Oct 11, SIZRS, one 60m chain
-# see email in UpTempO from Mike 5/24/23 14:25
 
 
 

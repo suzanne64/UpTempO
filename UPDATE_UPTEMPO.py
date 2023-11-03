@@ -21,6 +21,7 @@ def upupData():
     reporting,dead,order,newdead=BM.getBuoys()
     for r in reporting:
         print(r)
+    # exit()
     if len(newdead)>0:
         print(newdead)
         # exit(-1)
@@ -35,7 +36,7 @@ def upupData():
 
     #---- Update Data ----
     for r in reporting:  # reporting is a dict, keys are buoy ID'
-        # r = '300434064040440'
+        # r = '300534062897690'
         source,user=reporting[r][3].split(':')
         print(source,user,r)
         print(reporting[r][2])
@@ -44,6 +45,7 @@ def upupData():
             upd.getPG(r,user,reporting[r][2])
             upp.processPG(r)
             datpath, latestupdate = upp.WebFormat(r)
+            print('line 47',datpath,latestupdate)
         if source == 'ARGOS':
             print('getting '+r+' from ARGOS:'+user)
             upd.getARGOS(r)
@@ -57,6 +59,7 @@ def upupData():
             datpath, latestupdate = upp.WebFormat(r)
         
         fname=datpath.split('/')[-1]
+        print('fname',fname)
         opdat.write(datpath+' WebDATA/'+fname+'\n')
         # exit()
     if newdead:
@@ -66,7 +69,7 @@ def upupData():
             else: datpath=upp.WebFormat(nd,newdead=1)
 
     opdat.close()
-
+    # exit()
 
     upy.StatsReport(latestupdate)
 
@@ -108,7 +111,7 @@ def upupPlots():
             }
 
     for ii,c in enumerate(curbuoys):
-        # if '300434064040440' in c:
+        # if '300534062897690' in c:
         # if ii>5:
             binf = BM.BuoyMaster(c)
         # if binf['name'][0] == '2023':
