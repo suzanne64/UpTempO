@@ -214,7 +214,7 @@ def getL1(filename, bid, figspath=None):
             dfEdit.loc['Raw',ecol] = 0
         else:
             print(df[ecol].count())
-            dfEdit.loc['Raw',ecol] = len(df[ecol])
+            dfEdit.loc['Raw',ecol] = df[ecol].count()
             # dfEdit.loc['Raw',ecol] = df[ecol].count()   # doesn't include NaNs
         # set all other rows to zero
         dfEdit.loc[1:,ecol] = 0
@@ -293,7 +293,6 @@ def getL1(filename, bid, figspath=None):
         df.loc[(df['T0']==df['T0'].min()),'T0'] = np.nan
         
         print(dfEdit.head(15))
-        print('line 300',len(df))
         # exit()
         
     if '300234060236150' in bid:  # 2014 13
@@ -320,7 +319,7 @@ def getL1(filename, bid, figspath=None):
         print(dfEdit.head(15))
         dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
        
-        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>75.10) & (df['Lat']<75.15) & (df['Lon']>-153.00) & (df['Lon']<-152.92),'Lat'].count()
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lat']>75.10) & (df['Lat']<75.15) & (df['Lon']>-153.00) & (df['Lon']<-152.92),'Lat'].count()
         df.loc[(df['Lat']>75.10) & (df['Lat']<75.15) & (df['Lon']>-153.00) & (df['Lon']<-152.92),:] = np.nan
 
         # pressures
@@ -379,10 +378,10 @@ def getL1(filename, bid, figspath=None):
         # invalidate erroneous
         dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['Dates']<dt.datetime(2017,11,25))  & (df['T0']<-12),'T0'].count()
         df.loc[(df['Dates']<dt.datetime(2017,11,25))  & (df['T0']<-12),'T0'] = np.NaN
-        # for tcol in tcols:
-        #     if tcol not in 'T0':
-        #         dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol].count()
-        #         df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol] = np.nan
+        for tcol in tcols:
+            if tcol not in 'T0':
+                dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol].count()
+                df.loc[(df['Dates']>dt.datetime(2018,7,1)),tcol] = np.nan
         dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']==0),'P1'].count()
         df.loc[(df['P1']==0),'P1'] = np.NaN
         dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']>30) | (df['P1']<-30),'P1'].count()
@@ -429,7 +428,7 @@ def getL1(filename, bid, figspath=None):
          
         dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         
-        dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Lat']>73.62) & (df['Lat']<73.63) & (df['Lon']>155.13) & (df['Lon']<155.14),'Lat'].count()
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lat']>73.62) & (df['Lat']<73.63) & (df['Lon']>155.13) & (df['Lon']<155.14),'Lat'].count()
         df.loc[(df['Lat']>73.62) & (df['Lat']<73.63) & (df['Lon']>155.13) & (df['Lon']<155.14),:] = np.nan
 
         # correct wrapped temps
@@ -589,7 +588,6 @@ def getL1(filename, bid, figspath=None):
         dfEdit.loc['OtherUnphysicalValues','S1'] += df['S1'].count()        
         df['S1'] = np.nan
         print(dfEdit.head(15))
-        # exit()
         
     if '300534060251600' in bid:  # 2021 02
         # no initial adjustment needed
@@ -696,18 +694,19 @@ def getL1(filename, bid, figspath=None):
         df.loc[(df['Lat']>72.474) & (df['Lat']<72.476) & (df['Lon']>-154.739) & (df['Lon']<-154.738),:] = np.nan
         
         dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
-                                                       (df['Lat']>75.09) & (df['Lat']<75.10) &
-                                                       (df['Lon']>-163.026) & (df['Lon']<-163.024),'Lat'].count()
+                                                        (df['Lat']>75.09) & (df['Lat']<75.10) &
+                                                        (df['Lon']>-163.026) & (df['Lon']<-163.024),'Lat'].count()
         df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
-                                                       (df['Lat']>75.09) & (df['Lat']<75.10) &
-                                                       (df['Lon']>-163.026) & (df['Lon']<-163.024),:] = np.nan
+                                                        (df['Lat']>75.09) & (df['Lat']<75.10) &
+                                                        (df['Lon']>-163.026) & (df['Lon']<-163.024),:] = np.nan
         dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
-                                                       (df['Lat']>75.07) & (df['Lat']<75.08) &
-                                                       (df['Lon']>-163.008) & (df['Lon']<-163.006),'Lat'].count()
+                                                        (df['Lat']>75.07) & (df['Lat']<75.08) &
+                                                        (df['Lon']>-163.008) & (df['Lon']<-163.006),'Lat'].count()
         df.loc[(df['Dates']>dt.datetime(2022,10,7,22,0,0)) & (df['Dates']<dt.datetime(2022,10,8,0,0,0)) &
-                                                       (df['Lat']>75.07) & (df['Lat']<75.08) &
-                                                       (df['Lon']>-163.008) & (df['Lon']<-163.006),:] = np.nan
+                                                        (df['Lat']>75.07) & (df['Lat']<75.08) &
+                                                        (df['Lon']>-163.008) & (df['Lon']<-163.006),:] = np.nan
         print(dfEdit.head(15))
+        # exit()
        
         # pressures
         dfEdit.loc['ConstantValue','P1'] += len(df.loc[(df['P1']>20),'P1'])
@@ -786,7 +785,6 @@ def getL1(filename, bid, figspath=None):
         # check for bad buoy locations
         dfEdit.loc['BuoyLocationsFlagged',:] += df.loc[(df['GPSquality']<3),'GPSquality'].count()
         df.loc[(df['GPSquality']<3),:] = np.nan
-        print(dfEdit.head(15))
 
         # pressures
         dfEdit.loc['ConstantValue','P1'] += df.loc[(df['P1']>15) | (df['P1']==0),'P1'].count()       
@@ -799,10 +797,12 @@ def getL1(filename, bid, figspath=None):
         for scol in scols:
             dfEdit.loc['ConstantValue',scol] += len(df.loc[(df[scol]>150) | (df[scol]<12),scol])
             df.loc[(df[scol]>150) | (df[scol]<12),scol] = np.nan
-            
+        
         # invalidate salinities after max salinity, NOT YET
         # imax = df['S0'].idxmax()
         # df['S0'].iloc[imax+1:] = np.nan
+        # print(dfEdit.head(15))
+        # exit()
  
     if '300534063803100' in bid: # 2022 05
         # don't include data before buoy goes in water
@@ -970,10 +970,13 @@ def getL1(filename, bid, figspath=None):
         dfEdit.loc['OtherUnphysicalValues','P1'] += df.loc[(df['P1']<0),'P1'].count()
         df.loc[(df['P1']<0),'P1'] = np.nan
         # temperatures
-        dfEdit.loc['OtherUnphysicalValues','T1'] += df.loc[(df['T1']<-10),'T1'].count()
-        df.loc[(df['T1']<-10),'T1'] = np.nan
         dfEdit.loc['ConstantValue','T0'] += df.loc[(df['T0']==-0.01),'T0'].count()
         df.loc[(df['T0']==-0.01),'T0'] = np.nan
+        dfEdit.loc['ConstantValue','T1'] += df.loc[(df['T1']==37.4287),'T0'].count()
+        df.loc[(df['T1']==37.4287),'T1'] = np.nan
+        
+        dfEdit.loc['OtherUnphysicalValues','T1'] += df.loc[(df['T1']<-10),'T1'].count()
+        df.loc[(df['T1']<-10),'T1'] = np.nan
         # # salinities
         dfEdit.loc['OtherUnphysicalValues','S0'] += df.loc[(df['S0']<10),'S0'].count()
         df.loc[(df['S0']<10),'S0'] = np.nan
@@ -1069,7 +1072,7 @@ def getL1(filename, bid, figspath=None):
             df.loc[(df[tcol]>6) & ( (df['Dates'].dt.month>=10) | (df['Dates'].dt.month<=5) ),tcol] = np.nan
             
     print(dfEdit.head(15))
-    # exit()
+
     # drop a row if all values are NaN, reset index
     df.dropna(axis=0,how='all',inplace=True)
     df.reset_index(drop=True,inplace=True)
@@ -1138,6 +1141,8 @@ def getL1(filename, bid, figspath=None):
                 ax.plot(df['Lon'],df[col],'.-')
                 ax.plot(df['Lon'].iloc[0],df[col].iloc[0],'go')
                 ax.plot(df['Lon'].iloc[-1],df[col].iloc[-1],'ro')
+                # to see where GPSquality is culled.
+                # ax.plot(df.loc[(df['GPSquality']<3),'Lon'],df.loc[(df['GPSquality']<3),col],'co')
             elif 'Lon' in col:
                 remcols.append(col)
             elif 'S0' in col:
@@ -1429,6 +1434,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     by *= 1000
     [bi,bj] = polar_lonlat_to_ij(blon, blat, grid_size, hemisphere)  #i is to x as j is to y and they do +delta
     buoyloc = np.array([[bx,by]])
+    print('buoyloc',buoyloc)
     # print('list of b',bx,by,bi,bj)
 
     # get ice map
@@ -1502,34 +1508,51 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     bi2 = np.min((bi+trim,len(x)))
     bj1 = np.max((bj-trim,0))
     bj2 = np.min((bj+trim,len(y)))
-    # print(blon,blat,byear,bmonth,bday)
-    # print(bi1,bi2,bj1,bj2)
+    # print('locs day',blon,blat,byear,bmonth,bday)
+    # print(bi1,bi2,bj1,bj2,len(x),len(y))
     # print(ice.shape)
-        
     ice200 = ice[:,np.arange(bi1,bi2)][np.arange(bj1,bj2),:]
+    x200 = x[np.arange(bi1,bi2)]
+    y200 = y[np.arange(bj1,bj2)]
+    x200g,y200g = np.meshgrid(x200,y200)
+
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.contourf(x200g,y200g,ice200, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_title(f'ice200 from {icesrc} on {strdate}',fontsize=12)
+    # fig0.colorbar(ch0)
+
     ice200wi = ice[:,np.arange(bi1,bi2)][np.arange(bj1,bj2),:]
     ice200wi[ice200wi>=0.15] = 1
     ice200wi[ice200wi<0.15]  = 2
     x200 = x[np.arange(bi1,bi2)]
     y200 = y[np.arange(bj1,bj2)]
-    # print(x200.shape)
-    # print(y200.shape)
+    # print(x200.shape,y200.shape,ice200wi.shape)
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.contourf(x200g,y200g,ice200wi, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_title(f'ice200wi from {icesrc} on {strdate}',fontsize=12)
+    # fig0.colorbar(ch0)
+    # plott = 1
     # if plott:
-    #     extent=[np.min(x), np.max(x), np.min(y), np.max(y)]
-    #     fig0,ax0 = plt.subplots(1,1)
-    #     ch0 = ax0.imshow(ice, extent=extent, cmap='turbo')
-    #     ax0.plot(bx,by,'mo',markersize=5)
-    #     ax0.set_xlim(-2.5e6,1.5e6)
-    #     ax0.set_ylim(-1.5e6,2e6)
-    #     ax0.set_title(f'IceConc from {icesrc} on {strdate}',fontsize=12)
-    #     fig0.colorbar(ch0)
-
-    #     extent200=[np.min(x200),np.max(x200),np.min(y200),np.max(y200)]
-    #     fig1,ax1 = plt.subplots(1,1)
-    #     ch1 = ax1.imshow(ice200wi, extent=extent200)
-    #     ax1.plot(bx,by,'mo',markersize=5)
-    #     ax1.set_title(f'Ice(1), Water(2), buoy at {blon:.1f}W, {blat:.1f}N, SST={sst:.1f}C')
-    #     fig1.colorbar(ch1)
+    #     if bday==22:
+    #         extent=[np.min(x), np.max(x), np.min(y), np.max(y)]
+    #         fig0,ax0 = plt.subplots(1,1)
+    #         ch0 = ax0.imshow(ice, extent=extent, cmap='turbo')
+    #         ax0.plot(bx,by,'mo',markersize=5)
+    #         ax0.set_xlim(-2.5e6,1.5e6)
+    #         ax0.set_ylim(-1.5e6,2e6)
+    #         ax0.set_title(f'IceConc from {icesrc} on {strdate}',fontsize=12)
+    #         fig0.colorbar(ch0)
+    
+    #         extent200=[np.min(x200),np.max(x200),np.min(y200),np.max(y200)]
+    #         fig1,ax1 = plt.subplots(1,1)
+    #         ch1 = ax1.imshow(ice200wi, extent=extent200)
+    #         ax1.plot(bx,by,'mo',markersize=5)
+    #         ax1.set_title(f'Ice(1), Water(2), buoy at {blon:.1f}W, {blat:.1f}N, SST={sst:.1f}C')
+    #         fig1.colorbar(ch1)
+    #         plt.show()
+            # exit()
 
     icexx = np.repeat(x200.reshape(1,-1),len(y200),axis=0)
     iceyy = np.repeat(y200.reshape(-1,1),len(x200),axis=1)
@@ -1556,6 +1579,13 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     alldists = np.concatenate( (buoyloc,icelocs), axis=0 )
     dist1 = pdist(alldists) # pdist calcs dists between all locs, first icexx.shape are with buoyloc
     dist1 = dist1[:icexxd.shape[0]].reshape((len(y200),len(x200)))
+    dist1[np.isnan(ice200wi)] = np.nan
+    # print('dist1 shape',dist1.shape)
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.contourf(icexx,iceyy,dist1, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_title(f'dist1 from {icesrc} on {strdate}',fontsize=12)
+    # fig0.colorbar(ch0)
     # if plott:
     #     chd = ax1.contour(x200,y200,dist1/1000,levels=np.arange(0,250,25)) #,origin='upper',extent=extent200)
     #     chd.clabel(inline=True) #, chd.levels, inline=True,fontsize=10
@@ -1567,13 +1597,60 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
         # print('distance map shape',dist1.shape,ice.shape)
 
     icemask = ice[:,np.arange(bi1,bi2)][np.arange(bj1,bj2),:]
-    # icemask[icemask>200] = 5
     icemask[np.logical_and(icemask>=0.15,icemask<=1)] = 1
     icemask[icemask<0.15] = 0
+    
+    # if bday==22:
+    #     extent=[np.min(x), np.max(x), np.min(y), np.max(y)]
+    #     fig0,ax0 = plt.subplots(1,1)
+    #     ch0 = ax0.imshow(ice, extent=extent, cmap='turbo',vmin=0,vmax=0.15)
+    #     ax0.plot(bx,by,'mo',markersize=5)
+    #     ax0.set_xlim(-2.5e6,1.5e6)
+    #     ax0.set_ylim(-1.5e6,2e6)
+    #     ax0.set_title(f'IceConc from {icesrc} on {strdate}',fontsize=12)
+    #     fig0.colorbar(ch0)
+    
+    #     # icemask[icemask>200] = 5
+    #     fig0,ax0 = plt.subplots(1,1)
+    #     ch0 = ax0.imshow(icemask, extent=extent, cmap='turbo')
+    #     ax0.plot(bx,by,'mo',markersize=5)
+    #     ax0.set_xlim(-2.5e6,1.5e6)
+    #     ax0.set_ylim(-1.5e6,2e6)
+    #     ax0.set_title(f'Icemask',fontsize=12)
+    #     fig0.colorbar(ch0)
+    #     plt.show()
+    #     exit()
 
     dist2 = dist1
-    dist2[icemask==0] = np.nan  # open water
+    # extent=[np.min(x), np.max(x), np.min(y), np.max(y)]
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.imshow(dist1, extent=extent, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_xlim(-2.5e6,1.5e6)
+    # ax0.set_ylim(-1.5e6,2e6)
+    # ax0.set_title(f'dist1',fontsize=12)
+    # fig0.colorbar(ch0)
+    dist2[icemask==0] = np.nan  # setting open water to nan
+    # print('dist2 shape',dist2.shape)
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.contourf(icexx,iceyy,dist2, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_title(f'dist2 from {icesrc} on {strdate}',fontsize=12)
+    # fig0.colorbar(ch0)
+    # plt.show()
     mindist = np.nanmin(dist2)
+    # print(mindist)
+    # exit()
+    # extent=[np.min(x), np.max(x), np.min(y), np.max(y)]
+    # fig0,ax0 = plt.subplots(1,1)
+    # ch0 = ax0.imshow(dist2, extent=extent, cmap='turbo')
+    # ax0.plot(bx,by,'mo',markersize=5)
+    # ax0.set_xlim(-2.5e6,1.5e6)
+    # ax0.set_ylim(-1.5e6,2e6)
+    # ax0.set_title(f'dist2',fontsize=12)
+    # fig0.colorbar(ch0)
+    # plt.show()
+    # exit()
 
     if np.isnan(mindist) and plott:
         extent=[np.min(x), np.max(x), np.min(y), np.max(y)]

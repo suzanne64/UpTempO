@@ -83,6 +83,8 @@ def TimeSeriesPlots(bid,path,quan='Temp',df=None,tdepths=None,pdepths=None,sdept
         scols = [col for col in df.columns if col.startswith('S') and 'SUB' not in col]
         yaxlab='Salinity'
         ax.set_ylim(20,40)
+        if bid in ['300534062891690','300534062893740','300534062895700','300534062894730']:  #  2023-05,2023-06,2023-07,2022-10
+            ax.set_ylim(0,40)
 
         for ii,scol in enumerate(scols):
             ax.plot(df['Date'],df[scol],'-o',color=cols[ii],ms=1)
@@ -366,7 +368,12 @@ def TrackMaps(bid,path,df=None):
         for t in tr: opw.write(t+'\n')
         opw.close()
 
-def TrackMaps2Atlantic(bid,path):
+def TrackMaps2Atlantic(bid,path,df=None):
+
+    if df is None:
+        df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
+        
+    df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
 
     # ucols=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
     ucols=['k','purple','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
@@ -408,9 +415,7 @@ def TrackMaps2Atlantic(bid,path):
     # if cdomain == 'UpTempO': pltt.contour(bxx,byy,-bath,bscaleblack,colors='black',linewidths=1)
     ax1.contourf(bxx*1000,byy*1000,-bath,[3000.,9000.],colors=deepfillcol)
     # ax1.axis('off')
-    df = pd.read_csv(f'{path}/QualityControlled_{bid}.csv')
 
-    df['Date'] = pd.to_datetime(df[['Year','Month','Day','Hour']])
 
     for m in range(12):
         cm=m+1
@@ -418,6 +423,13 @@ def TrackMaps2Atlantic(bid,path):
         plt.plot(df['Lon'][cdat],df['Lat'][cdat],'o',ms=3,color='k',transform=ccrs.PlateCarree())
         plt.plot(df['Lon'][cdat],df['Lat'][cdat],'o',ms=2,color=ucols[m],transform=ccrs.PlateCarree())
 
+    # plot the flag at end of track
+    print(df['Lat'].iloc[-1],df['Lon'].iloc[-1])
+    xf,yf=PF.LLtoXY([df['Lat'].iloc[-1]],[df['Lon'].iloc[-1]],0.0)
+    xf *= 1000
+    yf *= 1000
+    plt.plot([xf,xf],[yf,yf+80000],'k',linewidth=0.6,zorder=2)  #
+    plt.scatter(xf+18000,yf+80000,s=40,c='r',marker='>',edgecolors='k',zorder=2)
 
     binf=BM.BuoyMaster(bid)
     startdate=f"{int(df['Month'].iloc[0]):02}/{int(df['Day'].iloc[0]):02}/{int(df['Year'].iloc[0])}"

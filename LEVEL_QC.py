@@ -75,7 +75,7 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2'
 # bid = '300534062898720'  # 2022 01  SASSIE
 # bid = '300534062897730'  # 2022 02  SASSIE
 # bid = '300534063704980'  # 2022 03  SASSIE  long
-bid = '300534063807110'  # 2022 04  SASSIE
+# bid = '300534063807110'  # 2022 04  SASSIE
 # bid = '300534063803100'  # 2022 05  SASSIE  long
 # bid = '300534062892700'  # 2022 06  SASSIE  no pressures
 # bid = '300534062894700'  # 2022 07  SASSIE  no pressures
@@ -88,7 +88,7 @@ bid = '300534063807110'  # 2022 04  SASSIE
 # bid = '300434064041440'  # 2023 01  NOAA 
 # bid = '300434064042420'  # 2023 02  NOAA 
 # bid = '300434064046720'  # 2023 03  NOAA 
-# bid = '300434064042710'  # 2023 04  NOAA 
+bid = '300434064042710'  # 2023 04  NOAA 
 # bid = '300534062891690'  # 2023 05 Healy
 # bid = '300534062893740'  # 2023 06 Healy
 # bid = '300534062895700'  # 2023 07 Healy
@@ -729,10 +729,10 @@ if len(pdepths)>0:
 iceday = input('Do you want to look at ice conc to find ridging times? : y for Yes, n for No ')
 if iceday.startswith('y'):
     icedate = input('which day? (in yyyymmdd format) ')
-    if dt.datetime(int(icedate[:4]),int(icedate[4:6]),int(icedate[6:]))<dt.datetime(2023,1,1):
-        strdate,ice,icexx,iceyy = pfields.getICE(icedate,src='g02202') # default is nsicd-0081 (nrt)
+    if dt.datetime(int(icedate[:4]),int(icedate[4:6]),int(icedate[6:]))<dt.datetime(2023,7,1):
+        strdate,ice,icexx,iceyy = pfields.getICE(icedate,src='g02202')
     else:
-        strdate,ice,icexx,iceyy = pfields.getICE(icedate) # default is nsicd-0081 (nrt)
+        strdate,ice,icexx,iceyy = pfields.getICE(icedate) # default is 'nsidc-0081' (NSIDC0081_SEAICE_PS_N25km*, nrt)
     # print(dt1,dt2)
     icecolors=['0.4','0.5','0.6','0.725','0.85','1.0']
     icelevels=[0.2,0.3,0.4,0.5,0.75]
@@ -1067,7 +1067,7 @@ if len(pdepths)>0:
                 #     exit(-1)
                # print(df1['Dates'].iloc[ii],ridgedAmount,pdepthsRidged,tsdepths,tsdepthsRidged)
  
-                if '300534060649670' in bid and df1['Dates'].iloc[ii]>=dt.datetime(2022,1,12,23,0,0):  # 2021 01, two levels of ridging
+                if '300534060649670' in bid and df1['Dates'].iloc[ii]>=dt.datetime(2021,12,26,12,0,0):  # 2021 01, two levels of ridging
                     pdepthsRidged = [pdepth-8.8 for pdepth in pdepths[-2:]]
                     pdepthsRidged.insert(0, pdepths[1] - df1['ridgedPressure'].iloc[ii])
                     pmeas = [df1['P1'].iloc[ii],df1['P3'].iloc[ii],df1['P4'].iloc[ii]]
@@ -1309,6 +1309,8 @@ for ecol in dfEdit.columns:
                                   dfEdit.loc['ConstantValue',ecol] -
                                   dfEdit.loc['OtherUnphysicalValues',ecol] -
                                   dfEdit.loc['TemperatureSpikesRemoved',ecol])
+dfEdit.loc['Processed'] = dfEdit.loc['Processed'].apply(lambda x: 0 if x<0 else x)
+
 print(dfEdit.head(15))
     
 # write dfEdit to .csv file  
@@ -1968,7 +1970,7 @@ if bid in '300234067936870':   # 2019 W9
 if bid in '300234061160500':   # 2020 01
     f2.write(f'%  NOTE: Air Temperature data constant value in Level1 file so no column in Level2 file.\n')
 if bid in '300534060649670':   # 2021 01 
-    f2.write(f'%  NOTE: Ridging after mid-Januray 2022 is ~3m for P1 and ~9m for P3 and P4. It is assumed T2, T3 and T4 are knotted up with P1. The sensors deeper in the water column hang down from there.\n')
+    f2.write(f'%  NOTE: Ridging after December 26, 2021 is ~3m for P1 and ~9m for P3 and P4. It is assumed T2, T3 and T4 are knotted up with P1. The sensors deeper in the water column hang down from there.\n')
     f2.write(f'%  NOTE: Temperature and Salinity data from sensor at 10m nominal depth all suspect. Set to invalid.\n')
 if bid in '300534062898720':   # 2022 01
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Oct 22, 2022 09:00 UTC when salinity data show major decrease.\n')
@@ -1992,14 +1994,13 @@ if bid in '300534062896730':   # 2022 09
     f2.write(f'%  NOTE: A fair amount of hand editing was done of the SBE T and S data, particularly during April 2023, to remove noisy data.\n')
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Dec 28, 2022 12:00 UTC when salinity data show major decrease.\n')
 if bid in '300534062894730':   # 2022 10
-    f2.write(f'%  NOTE: All data removed when location (lon/lat) values were unreasonable (even though GPS quality = 3) early in the time series.\n')
     f2.write(f'%  NOTE: After pressure sensor stops reporting, depths are set to nominal values when temperature values are valid and above freezing, when we know there is no ridging. If temperatures are below freezing, in this case, we set depth to 0m.\n')
 if bid in '300534062893700':   # 2022 11
     f2.write(f'%  NOTE: Temperature data measured at nominal depth of 0.14m removed after Sep 30, 2022, 13 UTC due to unexplainable jump.\n')
 if bid in '300534062895730':   # 2022 12
     f2.write(f'%  NOTE: After pressure sensors stop reporting, depths are set to nominal values when temperature values are valid.\n')
-if bid in '3300434064040440':   # 2023 09
-    f2.write(f'%  NOTE: The buoy is dragging on the ocean bottom on/after Sept 23, 2023.\n')
+# if bid in '3300434064040440':   # 2023 09
+#     f2.write(f'%  NOTE: The buoy is dragging on the ocean bottom on/after Sept 23, 2023.\n')
 
 f2.write(f'END\n')
 
