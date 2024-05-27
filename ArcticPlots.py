@@ -27,18 +27,44 @@ def UpTempOArcticMap(strdate=None): #nors='n'):
         objdate = dt.datetime.strptime(strdate,'%Y%m%d')
 
     # get satellite ice concentration data
+    # if ice data looks wack
+    wackice = 1
+    if wackice:  # go back a day
+        objdate = dt.datetime.now() - dt.timedelta(days=2)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    # get satellite ice concentration data
     icedate, ice, icexx, iceyy = pfields.getICE(strdate,nors='n')
     print('Date of ice map',icedate,ice.shape)
-    
-    # get satellite sst data
-    sstdate, sst, sstlon, sstlat = pfields.getSST(strdate)
-    print('Date of sst map',sstdate,sst.shape)
-    
-    # establish contour levels and colors
-    featcolors=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown']
-    featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]   # SST
+    if wackice:  # reset for title
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d') + dt.timedelta(days=1)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
     icecolors=['0.4','0.5','0.6','0.725','0.85','1.0']
     icelevels=[0.2,0.3,0.4,0.5,0.75]
+
+    # get satellite sst data
+    # if sst data looks wack
+    wacksst = 0
+    if wacksst:  # go back a day
+        objdate = dt.datetime.now() - dt.timedelta(days=2)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    sstdate, sst, sstlon, sstlat = pfields.getSST(strdate)   
+    if wacksst:  # reset for title
+        objdate = dt.datetime.strptime(strdate,'%Y%m%d') + dt.timedelta(days=1)
+        strdate = "%d%.2d%.2d" % (objdate.year,objdate.month,objdate.day)
+    # something has changed with the sst, starting Jan 6, 2024
+    # make land mask
+    landmask = np.full(sst.shape,fill_value=np.nan)
+    landmask[np.isnan(sst)] = 1
+    landlevels=[0.99, 1.01]
+
+    featcolors=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown']
+    featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]   # SST
+
+    # # establish contour levels and colors
+    # featcolors=['k','darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange','orangered','red','saddlebrown']
+    # featbar=[-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0,3.0,4.0,5.0]   # SST
+    # featcolors=['darkslateblue','blue','deepskyblue','cyan','limegreen','lime','yellow','darkorange']#,'orangered','red','saddlebrown']
+    # featbar=[-1.5,-1.0,-0.5,0.0,0.5,1.0,2.0] #,3.000001,4.0,5.0]   # SST
     # else:
     #     featbar=[-30.,-20.,-10.,-5.,-1.,0.0,1.0,5.0,10.,20.,30.]
     
@@ -46,35 +72,34 @@ def UpTempOArcticMap(strdate=None): #nors='n'):
     ax1 = plt.subplot(1,1,1,projection=ccrs.NorthPolarStereo(central_longitude=0))
     ax1.gridlines(crs=ccrs.PlateCarree(),xlocs=np.arange(-180,180,45),color='gray')
     ax1.add_feature(cfeature.LAND,facecolor='gray')
-    # ax1.add_feature(cfeature.OCEAN,facecolor='lightblue')
     ax1.coastlines(resolution='50m',linewidth=0.5,color='darkgray')
     kw = dict(central_latitude=90, central_longitude=-45, true_scale_latitude=70)
     # both of these set_extent commands work well
     # ax1.set_extent([-180,180,65,90],crs=ccrs.PlateCarree())
-    ax1.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
     if sst is not None:
-        ax1.contourf(sstlon, sstlat, sst, transform=ccrs.PlateCarree(),levels=featbar, colors=featcolors, extend='both')
+        chsst = ax1.contourf(sstlon,sstlat,sst,levels=featbar,colors=featcolors,extend='both',transform=ccrs.PlateCarree()) #,levels=featbar, colors=featcolors, extend='both'
+        chland = ax1.contourf(sstlon,sstlat,landmask,levels=landlevels,transform=ccrs.PlateCarree(),cmap='gist_gray') 
     else:
         ax1.text(-10,74,'SST data unavailable',color='k',fontsize=10,transform=ccrs.PlateCarree())
-    # fig1.colorbar(ch)
-    print(icexx.shape)
-    print(iceyy.shape)
-    print(ice.shape)
+
     if ice is not None:
-        print('before contourf')
-        # fig5,ax5 = plt.subplots(1,1)
-        # # ax5.plot(ice.ravel())
-        # ch5 = ax5.imshow(ice,vmin=0,vmax=1)
-        # fig5.colorbar(ch5,ax=ax5)
-        # plt.show()
-        # exit(-1)
-        ax1.contourf(icexx,iceyy,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
-                     transform=ccrs.Stereographic(**kw))   #use either colors or cmap
-        print('after contourf')
+        chice = ax1.contourf(icexx,iceyy,ice, colors=icecolors, levels=icelevels, vmin=0, vmax=0.9, extend='both',
+                      transform=ccrs.Stereographic(**kw))   #use either colors or cmap
     else:
         ax1.text(10,88,'ICE data unavailable',color='k',fontsize=10,transform=ccrs.PlateCarree())
+    # fig1.colorbar(chice)  
 
-    # fig1.colorbar(ch)        
+    BeringSea = 0  # this is 1 for microSWIFTs in Bering Sea
+    if not BeringSea:
+        ax1.set_extent([-2.0e6,2.0e6,-2.55e6,2.55e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
+    else:
+        ax1.set_extent([-2.0e6,2.0e6,-2.55e6,3.5e6],crs=ccrs.NorthPolarStereo(central_longitude=0))
+    #     ax1.plot(-178,62,'v',transform=ccrs.PlateCarree())
+    # ax1.set_title(f'SST on {strdate}')
+    # fig1.colorbar(chsst)
+    # plt.show()
+    # exit()
+       
     ax1.set_title(f'UpTempO Buoy Positions {objdate.month}/{objdate.day}/{objdate.year}',fontsize=20)
     
     # establish labels dictionary

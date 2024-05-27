@@ -9,6 +9,7 @@ Created on Tue Mar  8 12:36:50 2022
 import re, os
 from polar_convert import polar_lonlat_to_xy, polar_lonlat_to_ij, polar_ij_to_lonlat
 from polar_convert.constants import NORTH, TRUE_SCALE_LATITUDE, EARTH_RADIUS_KM, EARTH_ECCENTRICITY
+# from constants import NORTH, TRUE_SCALE_LATITUDE, EARTH_RADIUS_KM, EARTH_ECCENTRICITY
 import numpy as np
 import datetime as dt
 import netCDF4 as nc
@@ -24,6 +25,8 @@ from scipy.interpolate import interp2d, griddata
 import UpTempO_BuoyMaster as BM
 import statistics
 import itertools
+from haversine import haversine
+
 
 # L1path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL1'
 # L2path = '/Users/suzanne/uptempo_virtWebPage/UpTempO/WebDATA/LEVEL2'
@@ -104,7 +107,7 @@ def getL1(filename, bid, figspath=None):
                 break
 
     print(columns,len(columns),ii)
-    print(data.shape)
+    print(data.shape,depdate)
 
     if bid == '300234068719480':
         data = data[:,:-1]   # 2019 03 has a column of all zeros with no heading name        
@@ -113,8 +116,9 @@ def getL1(filename, bid, figspath=None):
         
     df = pd.DataFrame(data=data,columns=columns)
     print(df.columns)
-    binf = BM.BuoyMaster(bid)
     
+    binf = BM.BuoyMaster(bid)
+    print(binf)
     #####
     # exit()
     # if sdepths is not None:
@@ -181,6 +185,27 @@ def getL1(filename, bid, figspath=None):
     # remove data before deployment date
     df = df[(df['Dates']>=depdate)]
     print('first date after removing those before deployment date:',df['Dates'].iloc[0])
+    
+    def calcVelocity(df):
+        df['DateBTN'] = np.nan
+        df['DateBTN'].iloc[1:] = [df['Dates'].iloc[i-1]+(df['Dates'].iloc[i] - df['Dates'].iloc[i-1])/2 for i in range(1,len(df))]
+        df['DateBTN'] = pd.to_datetime(df['DateBTN'])
+        # df['DateDiff'] = df.loc[:,'Dates'].diff()
+        df['SecondsDiff'] = df.loc[:,'Dates'].diff()/np.timedelta64(1,'s')
+        df['distm'] = np.nan
+        
+        df.loc[(df['Lon']>180),'Lon'] -= 360
+        for ii in range(1,len(df)):
+            loc1 = (df['Lat'].iloc[ii-1],df['Lon'].iloc[ii-1])
+            loc2 = (df['Lat'].iloc[ii],  df['Lon'].iloc[ii])
+            df['distm'].iloc[ii] = haversine(loc1,loc2,unit='m')
+        df['velocity'] = df['distm'] / df['SecondsDiff']
+        
+        df.loc[(df['Lon']<-180),'Lon'] += 360
+        df.drop(columns=['DateBTN','SecondsDiff','distm'],inplace=True)
+        
+        return df
+    
 
     # make dataframe for saving editing stats
     # Edit = True
@@ -193,7 +218,8 @@ def getL1(filename, bid, figspath=None):
     editCols.extend(Scols)
     print()
 
-    dfEdit = pd.DataFrame(columns=editCols, index = ['Raw',
+    # initialize all cells to zero
+    dfEdit = pd.DataFrame(0,columns=editCols, index = ['Raw',
                                                      'DuplicateRows',
                                                      'InitialAdjustment',
                                                      'RawActual',
@@ -207,17 +233,14 @@ def getL1(filename, bid, figspath=None):
                                                      'PressureSpikesReplaced',
                                                      'TemperatureSpikesRemoved',
                                                      'Processed'])
-    # initialize all cells to zero
+    
     for ecol in editCols:
         print(ecol)
         if 'GPSquality' not in df.columns and ecol == 'GPSquality':
-            dfEdit.loc['Raw',ecol] = 0
+            dfEdit.loc['Raw',ecol] += 0
         else:
             print(df[ecol].count())
-            dfEdit.loc['Raw',ecol] = df[ecol].count()
-            # dfEdit.loc['Raw',ecol] = df[ecol].count()   # doesn't include NaNs
-        # set all other rows to zero
-        dfEdit.loc[1:,ecol] = 0
+            dfEdit.loc['Raw',ecol] += df[ecol].count()
 
     # implement data clean up (see weCode/LEVEL_2_IDL_CODE/READ_ME.txt)
     dfEdit.loc['DuplicateRows',:] += df.duplicated(['Dates','Lat','Lon']).sum()
@@ -345,11 +368,17 @@ def getL1(filename, bid, figspath=None):
         
         dfEdit.loc['RawActual',:] =  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lat']>73.72) & (df['Lat']<73.74) & (df['Lon']>-147.425) & (df['Lon']<-147.415),'Lat'].count()
+        df.loc[(df['Lat']>73.72) & (df['Lat']<73.74) & (df['Lon']>-147.425) & (df['Lon']<-147.415),:] = np.nan
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lat']>74.10) & (df['Lat']<74.15) & (df['Lon']>-144.2) & (df['Lon']<-144.1),'Lat'].count()
+        df.loc[(df['Lat']>74.10) & (df['Lat']<74.15) & (df['Lon']>-144.2) & (df['Lon']<-144.1),:] = np.nan
+        
         # remove bad subsurface temps
         for tcol in tcols:
             if 'T0' not in tcol:
                 dfEdit.loc['OtherUnphysicalValues',tcol] += df.loc[(df['Dates']>=dt.datetime(2016,10,20,2,0,0)),tcol].count()
-                df.loc[(df['Dates']>=dt.datetime(2016,10,20)),tcol] = np.NaN
+                df.loc[(df['Dates']>=dt.datetime(2016,10,20,2,0,0)),tcol] = np.nan
+                df.loc[(df[tcol]<-5) | (df[tcol]>2.5),tcol] = np.nan
         print(dfEdit.head(15))
         
         # pressures
@@ -995,7 +1024,7 @@ def getL1(filename, bid, figspath=None):
         print(dfEdit.head(15))
         
         # T0 has some unexplainable offset (to warmer temps)
-        dfEdit.loc['OtherUnphysicalValues','T0'] += len(df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'])
+        dfEdit.loc['OtherUnphysicalValues','T0'] += df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'].count()
         df.loc[(df['Dates']>=dt.datetime(2022,9,30,13,0,0)),'T0'] = np.nan 
     
     if '300534062895730' in bid: # 2022 12
@@ -1012,15 +1041,35 @@ def getL1(filename, bid, figspath=None):
     if '300434064041440' in bid: # 2023 01
         dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         df.drop(columns=['BATT'],inplace=True)  # these data aren't real
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        
     if '300434064042420' in bid: # 2023 02
         dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         df.drop(columns=['BATT'],inplace=True)  # these data aren't real
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        
     if '300434064046720' in bid: # 2023 03
         dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         df.drop(columns=['BATT'],inplace=True)  # these data aren't real
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        
     if '300434064042710' in bid: # 2023 04
         dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
         df.drop(columns=['BATT'],inplace=True)  # these data aren't real
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        
 
     if '300534062891690' in bid: # 2023 05
         # don't include data before buoy goes in water
@@ -1042,19 +1091,67 @@ def getL1(filename, bid, figspath=None):
     
     if '300534063449630' in bid: # 2023 08
         df = df.loc[(df['Dates']>=dt.datetime(2023,9,16,20,35,0)),:] 
+        
 
     if '300434064040440' in bid: # 2023 09
         dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
-        print(dfEdit.head(15))
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        # velocityname = f'{figspath}/Velocity_{binf["name"][0]}_{int(binf["name"][1]):02d}.csv'
+        # df.to_csv(velocityname,float_format='%.4f',index=False)
+        # exit()
 
     if '300434064048220' in bid: # 2023 10
-        pass
-
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        
+        fig,ax = plt.subplots(2,1,figsize=(10,5),sharex=True)
+        ax[0].plot(df['Dates'],df['velocity'],'bo-')
+        ax[0].set_ylim([0,2])
+        ax[0].set_title('microSWIFT Buoy 2023_10: original speeds')
+        ax[0].text(dt.datetime(2023,9,22),1.5,f"{df['velocity'].count()} points")
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        ax[1].plot(df['Dates'],df['velocity'],'bo-')
+        ax[1].set_ylim([0,2])
+        ax[1].set_title('microSWIFT Buoy 2023_10: speeds > 2 m/s culled')
+        ax[1].text(dt.datetime(2023,9,22),1.5,f"{df['velocity'].count()} points")
+        fig.savefig(f'{figspath}/velocitiesBeforeAfter.png',)
+        # plt.show()
+        # exit()
+        # velocityname = f'{figspath}/Velocity_{binf["name"][0]}_{int(binf["name"][1]):02d}.csv'
+        # df.to_csv(velocityname,float_format='%.4f',index=False)
+        # exit()
+        
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Lon']>-168.55) & (df['Lon']<-168.5) & (df['Lat']>73.3) & (df['Lat']<73.5),'Lat'].count()
+        df.loc[(df['Lon']>-168.55) & (df['Lon']<-168.5) & (df['Lat']>73.3) & (df['Lat']<73.5),:] = np.nan
+ 
+    
     if '300434064044730' in bid: # 2023 11
-        pass
-
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        # cull high velocities (in lieu of GPS quality)
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        # velocityname = f'{figspath}/Velocity_{binf["name"][0]}_{int(binf["name"][1]):02d}.csv'
+        # df.to_csv(velocityname,float_format='%.4f',index=False)
+        # exit()
+        
     if '300434064045210' in bid: # 2023 12
-        pass
+        dfEdit.loc['RawActual',:] +=  dfEdit.loc['Raw',:] - dfEdit.loc['DuplicateRows',:] - dfEdit.loc['InitialAdjustment',:]
+        df = calcVelocity(df)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['velocity']>2),'velocity'].count()
+        df.loc[(df['velocity']>2),:] = np.nan
+        # velocityname = f'{figspath}/Velocity_{binf["name"][0]}_{int(binf["name"][1]):02d}.csv'
+        # df.to_csv(velocityname,float_format='%.4f',index=False)
+        dfEdit.loc['BuoyLocationsFlagged',dfEdit.columns != 'GPSquality'] += df.loc[(df['Dates']>dt.datetime(2023,11,6)),'Lat'].count()
+        df.loc[(df['Dates']>dt.datetime(2023,11,6)),:] = np.nan
+        
+        print(dfEdit.head(15))
+        # exit()
 
     if '300534062897690' in bid: # 2023 13
         pass
@@ -1195,7 +1292,12 @@ def getL1(filename, bid, figspath=None):
                     plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{int(binf["name"][1]):02d}_{col}_withTime.png')
                 except:
                     plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{binf["name"][1]}_{col}_withTime.png')
-                plt.show()
+                
+                # fig2,ax2 = plt.subplots(1,1,figsize=(15,5))
+                # colors = df['Dates']
+                # ch = ax2.scatter(df['Lon'],df['Lat'],c=colors,s=3,cmap='prism')
+                # fig2.colorbar(ch)
+                # plt.show()
 
     for col in remcols:
         try:
@@ -1434,7 +1536,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     by *= 1000
     [bi,bj] = polar_lonlat_to_ij(blon, blat, grid_size, hemisphere)  #i is to x as j is to y and they do +delta
     buoyloc = np.array([[bx,by]])
-    print('buoyloc',buoyloc)
+    # print('buoyloc',buoyloc)
     # print('list of b',bx,by,bi,bj)
 
     # get ice map
@@ -1689,7 +1791,7 @@ def getBuoyIce(blon,blat,byear,bmonth,bday,sst,plott=0,bid=None,figspath=None):
     return indicator, mindist
 
 def getBuoyBathyPoint(df):
-    filegeb = '/Users/suzanne/gebco/GEBCO_2019.nc'
+    filegeb = '/Users/suzanne/gebco/GEBCO_2023.nc'
     ds = xr.open_dataset(filegeb)
     # gebco has longitudes east 
     # df.loc[(df['Lon']<0),'Lon'] += 360
@@ -1708,7 +1810,7 @@ def getBuoyBathyPoint(df):
     return df
 
 def getBuoyBathy(blon,blat,lonlim=10,latlim=10):
-    filegeb = '/Users/suzanne/gebco/GEBCO_2019.nc'
+    filegeb = '/Users/suzanne/gebco/GEBCO_2023.nc'
     ds = xr.open_dataset(filegeb)
     bathy = ds.sel(lon=slice(blon-lonlim,blon+lonlim),lat=slice(blat-latlim,blat+latlim)).load()
     # print(bathy.elevation.shape)

@@ -11,7 +11,9 @@ import numpy as np
 import pandas as pd
 import scipy.io as sio
 from itertools import chain
+from microSWIFTtelemetry import pull_telemetry_as_var
 import matlab.engine
+# import matlabengineforpython
 
 def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
 
@@ -61,7 +63,7 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
     tcolsorted=[]
     if 'Ts' in tcols:
         tcolsorted = [tcols.pop(0)]
-    tcolsorted.extend(sorted(tcols, key=lambda x:np.int(x.partition('T')[2])))
+    tcolsorted.extend(sorted(tcols, key=lambda x:int(x.partition('T')[2])))
     if 'Thull' in hinf.keys():
         tcolsorted.append('Thull')
     tcolsorted.extend([col for col in hinf.keys() if col.startswith('CTD-T')])
@@ -137,8 +139,11 @@ def processDATA(bid,df,hinf,fts=1,pmod='PG',L2p=False):
     fvars.insert(3,'Hour')
     df = df[fvars]
     df.drop(columns='Date',inplace=True)
-    print(df.head())
-
+    # print(df.head())
+    # print()
+    # print(df.tail())
+    # exit()
+    # for buoys that give pressure in decibars.
     if bid in ['300234068519450','300534062895730','300534060251600','300534060051570','300534062897690']:
         #        2019-02           2022-12           2021-02           2021-03           2023-13
         pcols = [col for col in df.columns if col.startswith('P') or col.startswith('CTD-P')]
@@ -361,120 +366,147 @@ def processPG(bid,L2p=False):
 
 def processMicroSWIFT(ID,bid):
     
-    eng = matlab.engine.start_matlab()
-    eng.addpath('/Users/suzanne/git_repos/SWIFT-codes/GeneralTools')
+    # eng = matlab.engine.start_matlab()
+    # eng.addpath('/Users/suzanne/git_repos/SWIFT-codes/GeneralTools')
     
-    startswift = dt.datetime(2023,9,19) 
-    starttime = f'{startswift.year}-{startswift.month:02d}-{startswift.day:02d}T00:00:00'
-    endtime = ''    # leaving endtime blank, says get data up to present.
+    # startswift = dt.datetime(2024,5,16) 
+    # starttime = f'{startswift.year}-{startswift.month:02d}-{startswift.day:02d}T00:00:00'
+    # endtime = ''    # leaving endtime blank, says get data up to present.
+    start = dt.datetime(2024,5,16)
+    end = dt.date.today()+dt.timedelta(days=1)
+    print('swift dates',start,end,ID)
 
-    swiftPath = 'swift_telemetry'
+    SWIFT_dict, errors_dict = pull_telemetry_as_var(buoy_id=ID,
+                                                start_date=start,
+                                                end_date=end,
+                                                var_type='dict')
+    print(SWIFT_dict.keys()) # e.g. SWIFT_dict['datetime']
+    print(SWIFT_dict['datetime'][0])
+    print(SWIFT_dict['datetime'][-1])
+    print()
+    dfSwift = pd.DataFrame(columns=['datetime','longitude','latitude','temperature','salinity'])
+    dfSwift['datetime'] = SWIFT_dict['datetime']
+    dfSwift['longitude'] = np.array(SWIFT_dict['longitude'])
+    dfSwift['latitude'] = np.array(SWIFT_dict['latitude'])
+    dfSwift['temperature'] = np.array(SWIFT_dict['temperature'])
+    dfSwift['salinity'] = np.array(SWIFT_dict['salinity'])
+    dfSwift['voltage'] = np.array(SWIFT_dict['voltage'])
+
+    # for processing with .m code (2023 data retrieval)
+    # swiftPath = 'swift_telemetry'
     # os.chdir(swiftPath)
-    print(ID,starttime,endtime)
+    # print(ID,starttime,endtime)
     # allbatterylevels, lasttime, lastlat, lastlon = eng.pullSWIFTtelemetry(ID,starttime,endtime,swiftPath)
-    what = eng.pullSWIFTtelemetry(ID,starttime,endtime) #,swiftPath)
+    # what = eng.pullSWIFTtelemetry(ID,starttime,endtime) #,swiftPath)
+    # print('after what')
     # os.chdir('../')
     
-    swiftFile=f'microSWIFT{ID}_telemetry.mat'
+    # swiftFile=f'microSWIFT{ID}_telemetry.mat'
     
-    swift_struct = sio.loadmat(f'{swiftPath}/{swiftFile}')
-    SWIFT = swift_struct['SWIFT']
+    # swift_struct = sio.loadmat(f'{swiftPath}/{swiftFile}')
+    # SWIFT = swift_struct['SWIFT']
     
 
-    # time, lat, lon are all the same length.   
-    # CTdepth, salinity, watertemp, driftspd, driftdirT can be multiple depths at same time, position
-    time = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['time'])])])
-    print(time[:4],len(time),ID)
-    print('line 384 processMicroSWIFT')
-    print(np.argwhere(np.isnan(time)))
-    #  I AM NOT SURE WHY WE HAVE TO SUBTRACT 366 DAYS...
-    dates = [dt.datetime.combine(dt.datetime.fromordinal(int(t))-dt.timedelta(days=366),dt.datetime.min.time()) + dt.timedelta(days=t-int(t)) for t in time]  # + dt.timedelta(days=1) - dt.timedelta(days=366) 
-    lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
-    lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
-    battery = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['battery'])])])
-
+    # # time, lat, lon are all the same length.   
+    # # CTdepth, salinity, watertemp, driftspd, driftdirT can be multiple depths at same time, position
+    # time = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['time'])])])
+    # print(time[:4],len(time),ID)
+    # print('line 384 processMicroSWIFT')
+    # print(np.argwhere(np.isnan(time)))
+    # #  I AM NOT SURE WHY WE HAVE TO SUBTRACT 366 DAYS...
+    # dates = [dt.datetime.combine(dt.datetime.fromordinal(int(t))-dt.timedelta(days=366),dt.datetime.min.time()) + dt.timedelta(days=t-int(t)) for t in time]  # + dt.timedelta(days=1) - dt.timedelta(days=366) 
+    # lat = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lat'])])])
+    # lon = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['lon'])])])
+    # battery = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['battery'])])])
+    # as of June, 2024, using python package microSWIFTtelemetry
+    # dates = 
     # make a dictionary relating times to geophysical vars
-    timedepth = {}
-    for ii in range(lat.shape[0]):
-        timedepth[ii] = {'time':SWIFT[0,:]['time'][ii].ravel(),
-                         'CTdepth':SWIFT[0,:]['CTdepth'][ii].ravel(),
-                         'WaterTemp':SWIFT[0,:]['watertemp'][ii].ravel(),
-                         'Salinity':SWIFT[0,:]['salinity'][ii].ravel(),
-                         # 'DriftSpd':SWIFT[0,:]['driftspd'][ii].ravel(),
-                         # 'DriftDirT':SWIFT[0,:]['driftdirT'][ii].ravel()
-                         }
+    # timedepth = {}
+    # for ii in range(lat.shape[0]):
+    #     timedepth[ii] = {'time':SWIFT[0,:]['time'][ii].ravel(),
+    #                      'CTdepth':SWIFT[0,:]['CTdepth'][ii].ravel(),
+    #                      'WaterTemp':SWIFT[0,:]['watertemp'][ii].ravel(),
+    #                      'Salinity':SWIFT[0,:]['salinity'][ii].ravel(),
+    #                      'DriftSpd':SWIFT[0,:]['driftspd'][ii].ravel(),
+    #                      'DriftDirT':SWIFT[0,:]['driftdirT'][ii].ravel()
+    #                      }
 
     # find all unique depths
-    CTdepth = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['CTdepth'])])])
-    unique, counts = np.unique(CTdepth, return_counts=True)
-    ndepths = len(unique)
-    print('line 780',unique,ndepths)
-    # get column names for dataframe
-    columns = ['Date','Lat','Lon']
-    [columns.append(f'CTdepth-{ii}') for ii in range(ndepths)]
-    [columns.append(f'WaterTemp-{ii}') for ii in range(ndepths)]
-    [columns.append(f'Salinity-{ii}') for ii in range(ndepths)]
-    columns.append('BATT')
+    # CTdepth = np.array([jtem for jtem in chain(*[item.tolist() for item in chain(*SWIFT[0,:]['CTdepth'])])])
+    # unique, counts = np.unique(CTdepth, return_counts=True)
+    # ndepths = len(unique)
+    # print('line 780',unique,ndepths)
+    # # get column names for dataframe
+    # columns = ['Date','Lat','Lon']
+    # [columns.append(f'CTdepth-{ii}') for ii in range(ndepths)]
+    # [columns.append(f'WaterTemp-{ii}') for ii in range(ndepths)]
+    # [columns.append(f'Salinity-{ii}') for ii in range(ndepths)]
+    # columns.append('BATT')
     # [columns.append(f'DriftSpd-{ii}') for ii in range(ndepths)]
     # [columns.append(f'DriftDirT-{ii}') for ii in range(ndepths)]
-    # create dataFrame
-    dfSwift = pd.DataFrame(columns=columns)
-    print(dfSwift.columns)
+    # # create dataFrame
+    # dfSwift = pd.DataFrame(columns=columns)
+    # print(dfSwift.columns)
 
-    dfSwift['Date'] = dates 
-    dfSwift['Lat'] = lat
-    dfSwift['Lon'] = lon
-    dfSwift['BATT'] = battery
+    # dfSwift['Date'] = dates 
+    # dfSwift['Lat'] = lat
+    # dfSwift['Lon'] = lon
+    # dfSwift['BATT'] = battery
 
-    for ii in range(ndepths):  # establish columns
-        dfSwift[f'CTdepth-{ii}'] = np.nan
-        dfSwift[f'WaterTemp-{ii}'] = np.nan
-        dfSwift[f'Salinity-{ii}'] = np.nan
-        # dfSwift[f'DriftSpd-{ii}'] = np.nan
-        # dfSwift[f'DriftDirT-{ii}'] = np.nan
+    # for ii in range(ndepths):  # establish columns
+    #     dfSwift[f'CTdepth-{ii}'] = np.nan
+    #     dfSwift[f'WaterTemp-{ii}'] = np.nan
+    #     dfSwift[f'Salinity-{ii}'] = np.nan
+    #     dfSwift[f'DriftSpd-{ii}'] = np.nan
+    #     dfSwift[f'DriftDirT-{ii}'] = np.nan
 
-    for k,v in timedepth.items():
+    # for k,v in timedepth.items():
 
-        for ii in range(ndepths):
-            if ii==0:
-                # print(dfSwift[k,f'CTdepth-{ii}'])
-                dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
-                # print(dfSwift[f'CTdepth-{ii}',0])
-                dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
-                dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
-                # dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
-                # dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
-            else:
-                try:
-                    dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
-                except:
-                    pass
-                try:
-                    dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
-                except:
-                    pass
-                try:
-                    dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
-                except:
-                    pass
-                try:
-                    dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
-                except:
-                    pass
-                try:
-                    dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
-                except:
-                    pass
-    print(dfSwift.head())
+    #     for ii in range(ndepths):
+    #         if ii==0:
+    #             # print(dfSwift[k,f'CTdepth-{ii}'])
+    #             dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+    #             # print(dfSwift[f'CTdepth-{ii}',0])
+    #             dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+    #             dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+    #             dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
+    #             dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
+    #         else:
+    #             try:
+    #                 dfSwift.at[k,f'CTdepth-{ii}'] = v['CTdepth'][ii]
+    #             except:
+    #                 pass
+    #             try:
+    #                 dfSwift.at[k,f'WaterTemp-{ii}'] = v['WaterTemp'][ii]
+    #             except:
+    #                 pass
+    #             try:
+    #                 dfSwift.at[k,f'Salinity-{ii}'] = v['Salinity'][ii]
+    #             except:
+    #                 pass
+    #             try:
+    #                 dfSwift.at[k,f'DriftSpd-{ii}'] = v['DriftSpd'][ii]
+    #             except:
+    #                 pass
+    #             try:
+    #                 dfSwift.at[k,f'DriftDirT-{ii}'] = v['DriftDirT'][ii]
+    #             except:
+    #                 pass
+    # print(dfSwift.head())
 
     # remove depth columns, they are only for header.
-    dfSwift.drop(columns=[item for item in dfSwift.columns if item.startswith('CTdepth-')],inplace=True)
+    # dfSwift.drop(columns=[item for item in dfSwift.columns if item.startswith('CTdepth-')],inplace=True)
+    # hinf=HC.PG_HeaderCodes([col for col in dfSwift.columns[3:]])
+    # mapper = {k:v for (k,v) in zip(dfSwift.columns[3:],hinf)}
+    print('line 494')
     print(dfSwift.columns)
-    hinf=HC.PG_HeaderCodes([col for col in dfSwift.columns[3:]])
-    mapper = {k:v for (k,v) in zip(dfSwift.columns[3:],hinf)}
+    hinf=HC.PG_HeaderCodes([col for col in dfSwift.columns])
+    mapper = {k:v for (k,v) in zip(dfSwift.columns,hinf)}
     dfSwift.rename(columns=mapper,inplace=True)
-    print(dfSwift.columns)
-    
+    print('dfSWIFT columns',dfSwift.columns)
+    # exit()
+    print(hinf)
+    print()
     processDATA(bid,dfSwift,hinf)  
     
     # WebFormat(f'microSWIFT-{bid}')

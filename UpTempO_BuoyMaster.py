@@ -6,6 +6,7 @@ import time
 
 def getBuoys():
 
+    # opf=open('UPTEMPO/UpTempO_Catalog_new2024.txt','r')
     opf=open('UPTEMPO/UpTempO_Catalog.txt','r')
     data=opf.read()
     opf.close()
@@ -72,7 +73,111 @@ def BuoyMaster(bid):
                              'vbatt_ind':1,
                              'sub_ind':1},
 
+#  --------------------------2024 buoys-------------------------------------
+
+        '300434064047460':{'notes':'UpTempO 2024 #1', 
+                           'name':['2024','1'],          
+                           'imeiabbv':'047460',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-040',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+        '300434064049430':{'notes':'UpTempO 2024 #2',  
+                           'name':['2024','2'],            
+                           'imeiabbv':'049430',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-041',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+        '300434064968900':{'notes':'UpTempO 2024 #3', 
+                           'name':['2024','3'],         
+                           'imeiabbv':'968900',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-065',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+        '300434064962870':{'notes':'UpTempO 2024 #4', 
+                           'name':['2024','4'],           
+                           'imeiabbv':'962870',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-077',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+        '300434065034120':{'notes':'UpTempO 2024 #5', 
+                           'name':['2024','5'],          
+                           'imeiabbv':'034120',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-080',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+        '300434064969860':{'notes':'UpTempO 2024 #6', 
+                           'name':['2024','6'],             
+                           'imeiabbv':'969860',
+                           'wmo':'NA',
+                           'deploymentDate':'05/16/2024',
+                           'deploymentLon':-178, 
+                           'deploymentLat':60,  
+                           'vessel':'NOAA Twin Otter',
+                           'brand':'University of Washington',
+                           'pgname':'microSWIFT-082',
+                           'tdepths':[0.5],         
+                           'sdepths':[0.5],
+                           'vbatt_ind':23},
+
+
+        # '300234063219570':{'notes':'UpTempO 2024 #7', 
+        #                    'name':['2024','7'],             
+        #                    'imeiabbv':'219570',
+        #                    'wmo':'NA',
+        #                    'deploymentDate':'10/01/2024',
+        #                    'deploymentLon':-156, 
+        #                    'deploymentLat':71,  
+        #                    'vessel':'Healy',
+        #                    'brand':'',
+        #                    'pgname':'PNNL_SPB_0001',
+        #                    'tdepths':[0.2],         
+        #                    'vbatt_ind':23},
+
+
+
+
 #  --------------------------2023 buoys-------------------------------------
+
 
         '300434064041440':{'notes':'UpTempO 2023 #1', # Jim Thomson's microSWIFT, salinity ball type
                         'name':['2023','1'],           #  

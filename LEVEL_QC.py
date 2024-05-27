@@ -18,12 +18,11 @@ from matplotlib.widgets import Cursor
 
 from matplotlib.widgets import Button
 from matplotlib.text import Annotation
-from mpl_point_clicker import clicker
+from mpl_point_clicker import clicker       # pip install
 import CalculateDepths as CD
 import UpTempO_BuoyMaster as BM
 import UpTempO_PlotsLevel2 as uplotsL2
 import UpTempO_ProcessRaw as upp
-from more_itertools import one
 from functools import reduce
 import ProcessFields as pfields
 sys.path.append('/Users/suzanne/git_repos/polarstereo-lonlat-convert-py/polar_convert')
@@ -38,6 +37,7 @@ import datetime as dt
 # from waterIce import getL1, getL2, plotL1vL2, getOPbias, getBuoyIce, getRidging, getRidgeDates
 from waterIce import *
 from haversine import haversine
+import pickle
 
 cList=['k','purple','blue','deepskyblue','cyan','limegreen','darkorange','red'] #'lime','yellow','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
 colorList=['k','purple','blue','deepskyblue','cyan','limegreen','lime','gold','darkorange','orangered','red','saddlebrown','darkgreen','olive','goldenrod','tan','slategrey']
@@ -81,17 +81,17 @@ figspath = '/Users/suzanne/Google Drive/UpTempO/level2'
 # bid = '300534062894700'  # 2022 07  SASSIE  no pressures
 # bid = '300534062894740'  # 2022 08  SASSIE
 # bid = '300534062896730'  # 2022 09  SASSIE  long
-# bid = '300534062894730'  # 2022 10  SASSIE
+# bid = '300534062894730'  # 2022 10  SASSIE  
 # bid = '300534062893700'  # 2022 11  SASSIE
 # bid = '300534062895730'  # 2022 12  SIZRS 3 press
 
 # bid = '300434064041440'  # 2023 01  NOAA 
 # bid = '300434064042420'  # 2023 02  NOAA 
 # bid = '300434064046720'  # 2023 03  NOAA 
-bid = '300434064042710'  # 2023 04  NOAA 
+# bid = '300434064042710'  # 2023 04  NOAA 
 # bid = '300534062891690'  # 2023 05 Healy
 # bid = '300534062893740'  # 2023 06 Healy
-# bid = '300534062895700'  # 2023 07 Healy
+bid = '300534062895700'  # 2023 07 Healy
 # bid = '300534063449630'  # 2023 08 Mirai
 # bid = '300434064040440'  # 2023 09 NOAA
 # bid = '300434064048220'  # 2023 10 NOAA
@@ -125,10 +125,13 @@ if not os.path.exists(figspath):
     os.mkdir(figspath)
     
 
-try:
-    level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"].split(" ")[0]}-FINAL.dat'
-except:
-    level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{binf["name"][1]}_{binf["vessel"]}-FINAL.dat'
+if bid in ['300534062891690','300534062895700']:   #  when we need preliminary plots
+    level1File = f'/Users/suzanne/Google Drive/UpTempO/UPTEMPO/WebData/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"].split(" ")[0]}-last.dat'
+else:
+    try:
+        level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{int(binf["name"][1]):02d}_{binf["vessel"].split(" ")[0]}-FINAL.dat'
+    except:
+        level1File = f'{L1path}/UpTempO_{binf["name"][0]}_{binf["name"][1]}_{binf["vessel"]}-FINAL.dat'
 try:
     level2File = f'{L2path}/UTO300234062491420_{binf["name"][0]}-{int(binf["name"][1]):02d}_{bid}_L2.dat'
 except:
@@ -138,12 +141,16 @@ try:
 except:
     level2Draft = f'{figspath}/UTO_{binf["name"][0]}-{binf["name"][1]}_{bid}_L2.dat'
 
+today = dt.datetime.now()
+tomorrow = today + dt.timedelta(days=2)
+
+
 timed = {'300234060340370': [dt.datetime(2014,8,28), dt.datetime(2017,5,7),   dt.datetime(2014,10,15)], # 2014 11  
          '300234060236150': [dt.datetime(2014,9,4),  dt.datetime(2016,2,4),   dt.datetime(2016,2,4)],   # 2014 13
          '300234062491420': [dt.datetime(2016,8,22), dt.datetime(2018,12,24), dt.datetime(2016,11,3)],  # 2016 04
          '300234063861170': [dt.datetime(2016,8,31), dt.datetime(2016,11,1), ''],                       # 2016 05
          '300234063991680': [dt.datetime(2016,9,4),  dt.datetime(2019,11,24), dt.datetime(2016,10,24)], # 2016 07
-         '300234064737080': [dt.datetime(2017,9,10), dt.datetime(2019,5,19),  dt.datetime(2018,1,15)],   # 2017 04
+         '300234064737080': [dt.datetime(2017,9,10), dt.datetime(2019,5,19),  dt.datetime(2018,1,15)],  # 2017 04
          '300234065419120': [dt.datetime(2017,10,1), dt.datetime(2017,11,15),''],                       # 2017 05
          '300234064739080': [dt.datetime(2017,3,1),  dt.datetime(2018,3,1),  ''],                       # 2017-W6
          '300234064735100': [dt.datetime(2018,9,18), dt.datetime(2018,11,5), ''],                       # 2018 02
@@ -171,18 +178,19 @@ timed = {'300234060340370': [dt.datetime(2014,8,28), dt.datetime(2017,5,7),   dt
          '300534062896730': [dt.datetime(2022,9,18), dt.datetime(2023,6,2),  ''],                       # 2022 09 SASSIE
          '300534062894730': [dt.datetime(2022,9,24), dt.datetime(2022,11,2), ''],                       # 2022 10 SASSIE
          '300534062893700': [dt.datetime(2022,9,24), dt.datetime(2022,10,9), ''],                       # 2022 11 SASSIE
+         '300534062895730': [dt.datetime(2022,10,10),tomorrow, ''],                       # 2022 12 SIZRS
          '300434064041440': [dt.datetime(2023,6,13), dt.datetime(2023,7,21), ''],                       # 2023 01 NOAA, microSWIFT
          '300434064042420': [dt.datetime(2023,6,13), dt.datetime(2023,7,6),  ''],                       # 2023 02 NOAA, microSWIFT
          '300434064046720': [dt.datetime(2023,6,14), dt.datetime(2023,7,4),  ''],                       # 2023 03 NOAA, microSWIFT
          '300434064042710': [dt.datetime(2023,6,14), dt.datetime(2023,7,21), ''],                       # 2023 04 NOAA, microSWIFT
-         '300534062891690': [], # 2023 05 Healy
+         '300534062891690': [dt.datetime(2023,7,28), tomorrow,''],                       # 2023 05 Healy
          '300534062893740': [dt.datetime(2023,7,28), dt.datetime(2023,8,6),  ''],                       # 2023 06 Healy
-         '300534062895700': [], # 2023 07 Healy
+         '300534062895700': [dt.datetime(2023,7,28), tomorrow,''],                       # 2023 07 Healy
          '300534063449630': [], # 2023 08 Mirai
-         '300434064040440': [dt.datetime(2023,9,21), dt.datetime(2023,9,26), ''],                       # 2023 09 NOAA
-         '300434064048220': [dt.datetime(2023,9,19),], # 2023 10 NOAA
-         '300434064044730': [dt.datetime(2023,9,19),], # 2023 11 NOAA
-         '300434064045210': [dt.datetime(2023,9,19),], # 2023 12 NOAA
+         '300434064040440': [dt.datetime(2023,9,21), dt.datetime(2023,9,26), ''],                       # 2023 09 NOAA, microSWIFT
+         '300434064048220': [dt.datetime(2023,9,19), dt.datetime(2023,11,18), ''],                      # 2023 10 NOAA, microSWIFT
+         '300434064044730': [dt.datetime(2023,9,19), dt.datetime(2023,11,18), ''],                      # 2023 11 NOAA, microSWIFT
+         '300434064045210': [dt.datetime(2023,9,19), dt.datetime(2023,11,8), ''],                       # 2023 12 NOAA, microSWIFT
          '': [],
          }
 
@@ -216,7 +224,19 @@ else:
 f2 = open(level2Draft,'w')
 
 df1,pdepths,tdepths,sdepths,ddepths,tiltdepths,dfEdit = getL1(level1File,bid,figspath)
-# print(dfCulledStats)
+# testing pickle
+fileout = 'what.pkl'
+with open(fileout,'wb') as outp:
+    pickle.dump(df1,outp,pickle.HIGHEST_PROTOCOL)
+    
+with open(fileout,'rb') as inp:
+    df11 = pickle.load(inp)
+    
+print(df1.head())
+print()
+print(df11.head())
+exit()
+
 print('tdepths',tdepths)
 print('sdepths',sdepths)
 print('pdepths',pdepths)
@@ -293,12 +313,15 @@ if plotT.startswith('y'):
             if tcol in 'T0':
                 ax.set_xlim([dt1,dt2])
             else:
+                # ax.set_xlim([dt.datetime(2017,6,1),dt.datetime(2017,7,1)])
+                # ax.set_xlim([dt.datetime(2018,6,14),dt.datetime(2018,7,1)])
                 ax.set_xlim([dt1,dt2a])
         else:
             ax.set_xlim([dt1,dt2])
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))  
         ax.set_title(f'{tcol}')
+        print(tcol,df1[tcol].count())
         # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
         # ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))   
         try:
@@ -370,6 +393,7 @@ if plotS.startswith('y'):
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
         # ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%dT%H:%M'))        
+        print(scol,df1[scol].count())
         plt.savefig(f'{figspath}/L1_{binf["name"][0]}_{int(binf["name"][1]):02d}_{scol}.png')
         plt.show()
 
@@ -899,7 +923,7 @@ if len(pdepths)>0:
     secax.plot(df1['Dates'],df1['bathymetry'],color='r',alpha=0.7)
     
     ax0.set_xlim([dt1,dt2])
-    ax0.set_title(f'Ocean Pressure nominal depth {pdepths[-1]} (b), Bathymetry (GEBCO 2019) (r)',fontsize=15)
+    ax0.set_title(f'Ocean Pressure nominal depth {pdepths[-1]} (b), Bathymetry (GEBCO 2023) (r)',fontsize=15)
     ax0.grid()
     fig0.savefig(f'{figspath}/P1_Bathymetry.png')
     plt.show()      
@@ -913,7 +937,7 @@ else:
     secax.plot(df1['Dates'],df1['bathymetry'],color='r',alpha=0.7)
     
     ax0.set_xlim([dt1,dt2])
-    ax0.set_title(f'Bathymetry (GEBCO 2019) (r)',fontsize=15)
+    ax0.set_title(f'Bathymetry (GEBCO 2023) (r)',fontsize=15)
     ax0.grid()
     fig0.savefig(f'{figspath}/Bathymetry_timeSeries.png')
     plt.show()      
@@ -934,6 +958,7 @@ ax[0].set_title('Bathymetry (b) and deepest pressure(r)')
 ax[0].grid()
 ax[1].plot(df1['Dates'],df1['dragging'],'.')
 ax[1].set_title('Dragging indicator: no(0), yes(1)')
+fig.savefig(f'{figspath}/DraggingIndicator.png')
 plt.show()
 # exit()
     
@@ -1336,11 +1361,12 @@ if len(Scols)>0:  # include all years Oct 2023
     df1['Dsss'] = np.nan    
     
 print('line 1038',df1.columns)
+print(bid)
     
 # if buoy is a 'salinity ball', there is only hull temperature, or if there are no pressures, or microSWIFTS
 if bid in ['300534062158480','300534062158460','300434064041440','300434064042420','300434064046720','300434064042710',
 #            2021 04           2021 05              2023 01          2023 02           2023 03           2023 04
-           '300434064040440','300434064048220','300434064044730	','300434064045210']:
+           '300434064040440','300434064048220','300434064044730','300434064045210']:
 #            2023 09           2023 10           2023 11           2023 12
     df1['FirstTpod'] = 0
     df1['sst'] = df1['T0']
@@ -1351,7 +1377,7 @@ if bid in ['300534062158480','300534062158460','300434064041440','30043406404242
         df1['sss'] = df1['S0']
         df1['Dsss'] = sdepths[0]
         df1.loc[(df1['sss']==np.isnan),['FirstSpod','sss','Dsss']] = np.nan
-
+     
 # elif bid in ['300534062897730']: # if there are no pressures, but more than one T and/or S
 # #               2022 02
 #     df1['FirstTpod'] = df1.apply(lambda row: (int(row[Tcols].gt(-1.9).idxmax()[1:])),axis=1)
@@ -1653,7 +1679,7 @@ else:
         # ax7[1].plot(df1['Dates'],df1['sss'],'r.',ms=3)
         # plt.show()
   
-    # sst is the temperature from the FWT
+    # sst is the temperature from the FWT  
     df1['sst'] = df1.apply(lambda row: (row[Tcols[int(row['FirstTpod'])]]),axis=1)
     df1.loc[(df1['sst']<-1.9),'sst'] = np.nan
 
@@ -1881,6 +1907,8 @@ if 'ridgedPressure' in df1.columns:
     df1.drop(columns=['ridgedPressure'],inplace=True)
 if 'GPSquality' in df1.columns:
     df1.drop(columns=['GPSquality'],inplace=True)
+if 'velocity' in df1.columns:
+    df1.drop(columns=['velocity'],inplace=True)
 df1.drop(columns=['ridged'],inplace=True) 
 
 print(df1.columns)
@@ -1974,6 +2002,7 @@ if bid in '300534060649670':   # 2021 01
     f2.write(f'%  NOTE: Temperature and Salinity data from sensor at 10m nominal depth all suspect. Set to invalid.\n')
 if bid in '300534062898720':   # 2022 01
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Oct 22, 2022 09:00 UTC when salinity data show major decrease.\n')
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
 if bid in '300534062897730':   # 2022 02
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to invalid after Oct 25, 2022 12:30 UTC when salinity data show major decrease.\n')
     f2.write(f'%  NOTE: As of April 2023, we are using a value of -1.9 degC for seawater freezing point to determine when, during the cooling season, a thermistor might have transitioned from ocean to ice/snow/air temperatures. This sometimes creates unphysical, small-amplitude jumps in our SST and "depth of SST" values. We will try to create a more realistic algorithm in the future.\n')
@@ -1983,20 +2012,26 @@ if bid in '300534063704980':   # 2022 03
 if bid in '300534063807110':   # 2022 04
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Nov 28, 2022 5:30 UTC when salinity data show major decrease.\n')
     f2.write(f'%  NOTE: After pressure sensor stops reporting, depths are set to nominal value (0.14m) when temperature values are valid. However, when temperature values are below freezing or indicate sensor is on ice, depths are set to 0m. Temperatures measured after July 23, 2023 8 UTC, are assumed to be SST, after melt pond flooding/breakup.\n')
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
     # f2.write(f'%  NOTE: After pressure sensor stops reporting, depths are set to nominal values when temperature values are valid and above freezing, when we know there is no ridging. If temperatures are below freezing, in this case, we set depth to 0m.\n')
+if bid in '300534062892700':   # 2022 06
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
 if bid in '300534062894700':   # 2022 07
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to invalid after Nov 7, 2022 06:00 UTC when salinity data show major decrease.\n')
     f2.write(f'%  NOTE: As of April 2023, we are using a value of -1.9 degC for seawater freezing point to determine when, during the cooling season, a thermistor might have transitioned from ocean to ice/snow/air temperatures. This sometimes creates unphysical, small-amplitude jumps in our SST and "depth of SST" values. We will try to create a more realistic algorithm in the future.\n')
 if bid in '300534062894740':   # 2022 08
     f2.write(f'%  NOTE: After pressure sensor stops reporting, depths are set to nominal values when temperature values are valid.\n')
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
 if bid in '300534062896730':   # 2022 09
     f2.write(f'%  NOTE: Pressure biases were determined with data from mid-Jan to mid-Feb, 2023.\n')
     f2.write(f'%  NOTE: A fair amount of hand editing was done of the SBE T and S data, particularly during April 2023, to remove noisy data.\n')
     f2.write(f'%  NOTE: Keeping all salinity data for now. But setting First Wet Conductivity Sensor, SSS and depth of SSS to subsurface values, where appropriate, after Dec 28, 2022 12:00 UTC when salinity data show major decrease.\n')
 if bid in '300534062894730':   # 2022 10
     f2.write(f'%  NOTE: After pressure sensor stops reporting, depths are set to nominal values when temperature values are valid and above freezing, when we know there is no ridging. If temperatures are below freezing, in this case, we set depth to 0m.\n')
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
 if bid in '300534062893700':   # 2022 11
     f2.write(f'%  NOTE: Temperature data measured at nominal depth of 0.14m removed after Sep 30, 2022, 13 UTC due to unexplainable jump.\n')
+    f2.write(f'%  NOTE: This buoy has a 7-section, 36" diameter drogue hanging below the sensors, where each section of the drogue is 36" long. The top of the drogue hangs at a nominal depth of about 12m.\n')
 if bid in '300534062895730':   # 2022 12
     f2.write(f'%  NOTE: After pressure sensors stop reporting, depths are set to nominal values when temperature values are valid.\n')
 # if bid in '3300434064040440':   # 2023 09

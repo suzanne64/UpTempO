@@ -617,7 +617,7 @@ def PrevOverviewMap(strdate=None):
 
     ax = aplots.UpTempOArcticMap(strdate)
     # shapes = {2019:'o', 2020:'s',2021:'d',2022:'.'}
-    shapes = {2022:'o',2023:'d'}
+    shapes = {2022:'o',2023:'d',2024:'v'}
     print('line 649 in plots')
     # newline = '\n'
     # get last locations of each buoy we are currently following on buoysdate
@@ -641,6 +641,8 @@ def PrevOverviewMap(strdate=None):
         #     # blab=f"{binf['name'][0]}-{binf['name'][1]}{newline}{df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
         #     blab=f"{binf['name'][0]}-{binf['name'][1]} {df['Month'].iloc[-1]}/{df['Day'].iloc[-1]}/{df['Year'].iloc[-1]-2000}"
             ax.plot(clon,clat,marker=shapes[df['Year'].iloc[0]],color='k',ms=5, #ms=10,
+                    transform=ccrs.PlateCarree())
+            ax.plot(-178,62,marker='v',color='k',ms=5, #ms=10,
                     transform=ccrs.PlateCarree())
             ax.text(clon-(2*np.cos(clat)*np.pi/180),clat-0.5,blab,fontsize=12, color='k', fontweight='bold',transform=ccrs.PlateCarree())
 

@@ -73,12 +73,20 @@ def PG_HeaderCodes(header):
            'AirTemp':'Ta',
            'AccelerometerVariance':'Accelerometer',
            
-           # microSwift variables
+           # 2023 microSwift variables
            'CTdepth-0':'D0','CTdepth-1':'D1',
            'WaterTemp-0':'T0','WaterTemp-1':'T1',
            'Salinity-0':'S0','Salinity-1':'S1',
            'DriftSpd-0':'spd0','DriftSpd-1':'spd1',
            'DriftDirT-0':'dir0','DriftDirT-1':'dir1',
+           # 2024 microSwift variables
+           'datetime':'Date',
+           'latitude':'Lat',
+           'longitude':'Lon',
+           'temperature':'T0',
+           'salinity':'S0',
+           'voltage':'BATT',
+           
            }
 
 

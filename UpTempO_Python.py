@@ -14,6 +14,9 @@ import pandas as pd
 
 
 def StatsReport(lupdate):
+    
+    print(lupdate)
+    # exit(-1)
 
     curbuoys,deadbuoys,orderbuoys,newdead=BM.getBuoys()
     oph=open('UPTEMPO/WebPlots/STATS-REPORT.txt','r')
@@ -35,8 +38,6 @@ def StatsReport(lupdate):
             else: statline=''
 
             binf=BM.BuoyMaster(b)  # buoy info
-            print()
-            print(statline)
             try:
                 abbv,byear,depdate,source=curbuoys[b]
             except:
@@ -78,9 +79,10 @@ def StatsReport(lupdate):
                 statlist=[binf['name'][1],binf['vessel'],depdate,depll,'','','',abbv,'NA','0',binf['name'][0],b,'','1']
             else:
                 statlist=statline.split(',')
+            print('line 82')
             print(statlist)
             print()
-            if b in newdead: statlist[-5]='1'
+            if b in newdead: statlist[-6]='1'
 
 
 
@@ -117,6 +119,10 @@ def StatsReport(lupdate):
                 lastbatt = 'NA'
 
             depdate=depdate.split(' ')[0]
+            print('line 123 Python')
+            print(depdate)
+            print(binf)
+            
             amlistening=binf['listening']
 
             statlist[4]=lastdate
